@@ -110,6 +110,11 @@ No hardcoded drive letters: it looks at `$DSH_HOME`, then `.dsh` next to the dsh
 
 ## 4. Install
 
+> **v1.1.9 safe by default needs only three steps**: install → fully quit and restart the host →
+> `/purge status`. Steps 4.6 "Clean → Apply" and sections 6–9 describe **full mode**
+> (`safeMode: false`), which is neither needed nor recommended by default.
+> For the latest version's actual workflow see [13. Using the latest version](#13-using-the-latest-version-v119).
+
 ### 4.0 Pick the right host
 
 | What you run | profile | Notes |
@@ -233,7 +238,7 @@ Success marker: `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json`
 
 ### 4.4 Route D: Release zip
 
-Pushing `master` makes GitHub Actions publish a Release whose asset is `dsh-purge-<version>.zip`. Unzip it, then either use Route B against the extracted directory or Route C.
+Pushing `master` makes GitHub Actions publish a Release whose asset is `dsh-purge-fix-<version>.zip`. Unzip it, then either use Route B against the extracted directory or Route C.
 
 ---
 
@@ -276,8 +281,13 @@ flowchart LR
 - [ ] `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json` exists
 - [ ] the **dsh-purge** dock button appears beside the session title and opens
 - [ ] `/purge status` prints `DSH_HOME` and the patch list, pointing at the host you actually run
-- [ ] the model sees `purge_status` / `purge_apply` / `purge_revert` tools
+- [ ] the model sees the `purge_status` tool (proves the bundle loaded)
 - [ ] `node <plugin>/bin/dsh-purge.js --status` lists patch states
+
+> **In v1.1.9 safe mode there is only `purge_status`.** `purge_apply` / `purge_revert`
+> and the "Clean → Apply" flow belong to full mode (`safeMode: false`). A read-only status
+> after install is success — missing apply/revert tools does not mean a broken install.
+> See [13. Using the latest version](#13-using-the-latest-version-v119).
 
 Optional packages that are missing show as `skipped` and do not block Apply.
 
@@ -307,8 +317,13 @@ Runtime under `$DSH_HOME` (one per host): `prompt-inject.md`, `rules/`, `skills/
 
 ## 6. Usage
 
+> **The full command table below applies to full mode (`safeMode: false`).** v1.1.9 safe mode
+> exposes only `/purge status`, `/purge help` and `purge_status`; the rest require opting out of
+> the safe default. For day-to-day usage of the latest version see
+> [13. Using the latest version](#13-using-the-latest-version-v119).
+
 ```sh
-dsh-purge --status | --apply | --revert | --uninstall | --edit | --help
+dsh-purge-fix --status | --apply | --revert | --uninstall | --edit | --help
 
 /purge status | apply | revert | uninstall | edit | help
 /rules list | use <id> | create <id> | delete <id> | reset | help
@@ -381,12 +396,12 @@ Applying (startup self-check or the Apply button) backs each target file up as `
 ## 9. Update, restore, uninstall
 
 ```powershell
-dsh plugin --profile desktop remove dsh-purge
+dsh plugin --profile desktop remove dsh-purge-fix
 dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
 # quit → reopen → Clean → Apply
 ```
 
-Restore keeps the plugin and returns the host to stock: `dsh-purge --revert` (or `/purge revert`). `prompt-inject.md` is a user file and is kept. Uninstall restores first, then removes the injection file, rule store and the plugin: `dsh-purge --uninstall` (or `/purge uninstall`).
+Restore keeps the plugin and returns the host to stock: `dsh-purge-fix --revert` (or `/purge revert`). `prompt-inject.md` is a user file and is kept. Uninstall restores first, then removes the injection file, rule store and the plugin: `dsh-purge-fix --uninstall` (or `/purge uninstall`).
 
 Publishing a new version: bump `package.json`, put `# <version>` as the first line of `release-notes.md`, push `master` — Actions publishes the Release and zip.
 

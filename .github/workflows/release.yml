@@ -45,13 +45,13 @@ jobs:
             echo "release-notes.md 第一行必须是 # ${version}，现在是: ${first}"
             exit 1
           fi
-          zip="dsh-purge-${version}.zip"
+          zip="dsh-purge-fix-${version}.zip"
           if git rev-parse -q --verify "refs/tags/${tag}^{}" >/dev/null; then
             commit="$(git rev-parse "refs/tags/${tag}^{}")"
-            git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" "$commit"
+            git archive --format=zip --prefix="dsh-purge-fix-${version}/" --output="$zip" "$commit"
             gh release create "$tag" --title "$tag" --notes-file release-notes.md
           else
-            git archive --format=zip --prefix="dsh-purge-${version}/" --output="$zip" HEAD
+            git archive --format=zip --prefix="dsh-purge-fix-${version}/" --output="$zip" HEAD
             args=(release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file release-notes.md)
             case "$version" in
               *beta*|*alpha*|*rc*) args+=(--prerelease) ;;

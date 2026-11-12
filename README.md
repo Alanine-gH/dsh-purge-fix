@@ -110,6 +110,10 @@
 
 ## 四、安装（重点）
 
+> **v1.1.9 安全默认版只需三步**：装好 → 完全退出并重启宿主 → `/purge status` 确认。
+> 本节的 4.6「清洗 → 应用」、以及第六 / 七 / 八 / 九节描述的是**完整模式**（`safeMode: false`）的行为，
+> 默认安全模式下不需要也不建议执行。完整的最新版用法见 [十三、最新版怎么用](#十三最新版怎么用v119)。
+
 ### 4.0 先确认你要装到哪个宿主
 
 | 你在跑 | profile | 说明 |
@@ -243,7 +247,7 @@ pnpm install
 
 ### 4.4 方式 D：Release 压缩包
 
-仓库推 `master` 会由 GitHub Actions 自动出 Release（附件 = `dsh-purge-<version>.zip`）。下载解压后：
+仓库推 `master` 会由 GitHub Actions 自动出 Release（附件 = `dsh-purge-fix-<version>.zip`）。下载解压后：
 
 - 想用命令行 → 按[方式 B](#42-方式-b本地目录安装离线可用) 指向解压目录；
 - 命令行不方便 → 按[方式 C](#43-方式-c手动安装cli-装不上时兜底) 放进 `plugins/` 再手改 profile。
@@ -291,8 +295,12 @@ flowchart LR
 - [ ] `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json` 存在
 - [ ] 宿主界面会话标题旁出现 **dsh-purge** 按钮，右侧栏能打开
 - [ ] 聊天里 `/purge status` 打印 `DSH_HOME` 与补丁列表，且路径是你实际在跑的那份
-- [ ] 模型侧有 `purge_status` / `purge_apply` / `purge_revert` 三个工具（说明 bundle 已加载）
+- [ ] 模型侧有 `purge_status` 工具（说明 bundle 已加载）
 - [ ] `node <插件>/bin/dsh-purge.js --status` 能列出补丁状态
+
+> **v1.1.9 安全模式下只有 `purge_status` 一个工具**，`purge_apply` / `purge_revert`
+> 和「清洗 → 应用」属于完整模式（`safeMode: false`）。默认装好看到只读状态就是成功，
+> 不要因为少了 apply / revert 工具以为没装好。见 [十三、最新版怎么用](#十三最新版怎么用v119)。
 
 可选包（例如 liangshen 相关）没装时显示 `skipped`，不阻塞应用，属正常。
 
@@ -333,14 +341,18 @@ flowchart LR
 
 ## 六、使用
 
+> **以下完整命令表属于「完整模式」（`safeMode: false`）。** v1.1.9 默认安全模式只提供
+> `/purge status`、`/purge help` 与 `purge_status`；其余命令需要显式关闭安全默认后才可用。
+> 最新版日常用法见 [十三、最新版怎么用](#十三最新版怎么用v119)。
+
 ```sh
 # 命令行
-dsh-purge --status       # 宿主、DSH_HOME、补丁 applied/pending、shim、备份
-dsh-purge --apply        # 应用全部补丁（提示词 + 代码 + shim + override）
-dsh-purge --revert       # 回滚还原
-dsh-purge --uninstall    # 卸载（已应用则先还原）
-dsh-purge --edit         # 编辑注入文件 prompt-inject.md
-dsh-purge --help
+dsh-purge-fix --status       # 宿主、DSH_HOME、补丁 applied/pending、shim、备份
+dsh-purge-fix --apply        # 应用全部补丁（提示词 + 代码 + shim + override）
+dsh-purge-fix --revert       # 回滚还原
+dsh-purge-fix --uninstall    # 卸载（已应用则先还原）
+dsh-purge-fix --edit         # 编辑注入文件 prompt-inject.md
+dsh-purge-fix --help
 
 # 聊天命令
 /purge status | apply | revert | uninstall | edit | help
@@ -431,7 +443,7 @@ flowchart TD
 **更新**（本仓库 tarball 安装时最稳）：
 
 ```powershell
-dsh plugin --profile desktop remove dsh-purge
+dsh plugin --profile desktop remove dsh-purge-fix
 dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
 # 然后完全退出宿主 → 重开 → 清洗 → 应用
 ```
@@ -441,7 +453,7 @@ dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/arc
 **还原**（保留插件，只回原版宿主）：
 
 ```sh
-dsh-purge --revert        # 或 /purge revert，或面板「还原」
+dsh-purge-fix --revert        # 或 /purge revert，或面板「还原」
 ```
 
 - 每个目标文件应用前备份为 `<文件>.dshpurge.bak`；还原用备份覆盖回去并删除备份；没有备份时只去掉 shim 里由本插件写入的行。
@@ -450,7 +462,7 @@ dsh-purge --revert        # 或 /purge revert，或面板「还原」
 **卸载**：
 
 ```sh
-dsh-purge --uninstall     # 或 /purge uninstall，或面板「清洗 → 卸载」
+dsh-purge-fix --uninstall     # 或 /purge uninstall，或面板「清洗 → 卸载」
 ```
 
 会先还原（若已应用）再删除注入文件、规则库与插件本身，然后重启宿主。
