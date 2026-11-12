@@ -1,7 +1,7 @@
 {
   "name": "dsh-purge",
-  "version": "1.8.0",
-  "description": "DeepSeek Harness 破甲：让所有模型都能破甲，不同模型可换不同提示词；默认提示词面向国模「小码酱」。Jailbreak for every model — swap prompts per model. 求 Star 收藏 ⭐ 如要二开，请查看署名要求部分",
+  "version": "1.1.9",
+  "description": "DeepSeek Harness 清洗 / 红队评测插件。v1.1.9 默认安全模式：启用插件不改动宿主任何文件，修复 0.2.2+ 启用即崩（unknown prompt variable {{cwd}} / ctx.agents.roots）。完整能力需显式关闭 safeMode。求 Star ⭐；如要二开请看署名要求。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -32,11 +32,13 @@
     "README.md",
     "README.en.md",
     "README.zh-CN.md",
+    "release-notes.md",
     "LICENSE"
   ],
   "scripts": {
     "embed-prompt": "node scripts/embed-default-prompt.mjs",
-    "build:client": "node scripts/build-client.mjs"
+    "build:client": "node scripts/build-client.mjs",
+    "test": "node scripts/verify-safe-mode.mjs"
   },
   "license": "MIT",
   "keywords": [
@@ -56,11 +58,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ZXEB/dsh-purge.git"
+    "url": "git+https://github.com/Alanine-gH/dsh-purge.git"
   },
-  "homepage": "https://github.com/ZXEB/dsh-purge#readme",
+  "homepage": "https://github.com/Alanine-gH/dsh-purge#readme",
   "bugs": {
-    "url": "https://github.com/ZXEB/dsh-purge/issues"
+    "url": "https://github.com/Alanine-gH/dsh-purge/issues"
   },
   "dsh": {
     "bundle": {
@@ -78,9 +80,9 @@
     },
     "install": {
       "preferred": "tarball",
-      "tarball": "https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz",
-      "zip": "https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.zip",
-      "git": "https://github.com/ZXEB/dsh-purge.git"
+      "tarball": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz",
+      "zip": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.zip",
+      "git": "https://github.com/Alanine-gH/dsh-purge.git"
     }
   },
   "publishConfig": {

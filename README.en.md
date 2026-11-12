@@ -4,16 +4,16 @@
 
 <h1 align="center">⚔️ dsh-purge — DeepSeek Harness red-team / robustness plugin</h1>
 
-<p align="center"><strong>Mirror rebuild v1.1.71</strong></p>
+<p align="center"><strong>v1.1.9 · Safe by default</strong></p>
 
 <p align="center">
-  <em>Full source extracted from <code>YuJunZhiXue/dsh-purge</code> v1.1.71 (the original repo and its npm package are both gone). This repository preserves and redistributes it; the original attribution terms still apply.</em>
+  <em>Full source extracted from <code>YuJunZhiXue/dsh-purge</code> v1.1.71 (the original repo is gone). Original attribution terms still apply.</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.71-1a73e8?style=flat" alt="version">
+  <img src="https://img.shields.io/badge/version-1.1.9-1a73e8?style=flat" alt="version">
   <img src="https://img.shields.io/badge/license-MIT-65a30d?style=flat" alt="MIT">
-  <img src="https://img.shields.io/badge/dsh-0.2.0--rc.2-blue" alt="dsh 0.2">
+  <img src="https://img.shields.io/badge/dsh-0.2.x-blue" alt="dsh 0.2.x">
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=node.js&logoColor=fff" alt="Node.js">
 </p>
 
@@ -21,12 +21,32 @@
   <a href="README.md">中文</a> | <a href="README.en.md">English</a>
 </p>
 
-> **This is an extraction / mirror repository.** The publisher deleted both the GitHub repo and the npm package, so **`dsh plugin add dsh-purge` (install by package name) no longer works**. Install with the **tarball / local directory / manual** routes below. After installing you must restart the host and click **Apply** once inside **Clean** — otherwise nothing changes.
+> ## ⚠️ v1.1.9: safe by default
+>
+> Older releases (1.8.0 and earlier) **broke the dsh host as soon as the plugin was enabled**:
+> `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`,
+> `ctx.agents.roots is not a function`, failing session creation, unreadable history,
+> and even a modified/corrupted dsh installation. The cause was a composition-level
+> override of the host `system-prompt` config with a `personaSuffix` containing a template
+> variable, plus boot-time preset deployment, global hooks, and host-file patching that
+> are incompatible with dsh 0.2.2+.
+>
+> **Since 1.1.9, `safeMode: true` is the default: install → enable changes nothing on the host.**
+> Only read-only `/purge status`, `purge_status`, and a status HTTP endpoint are registered.
+> See [Safe mode](#0-safe-mode) below.
+>
+> To opt into the full host-modifying behaviour, explicitly set
+> `dsh-purge.config.safeMode: false` in `cordis.patch.yml` and remove the `disabled`
+> flags on the `dsh-purge-redteam*` rows, then restart. **Not compatible with dsh 0.2.2+; use at your own risk.**
+>
+> `dsh-purge@1.1.9` is published on npm again, so `dsh plugin add dsh-purge` works;
+> tarball / local directory / manual routes below also work.
 
 ---
 
 ## Contents
 
+- [0. Safe mode](#0-safe-mode)
 - [1. What this is](#1-what-this-is)
 - [2. Feature overview](#2-feature-overview)
 - [3. Requirements](#3-requirements)
@@ -47,6 +67,29 @@
 - [10. FAQ](#10-faq)
 - [11. Compatibility](#11-compatibility)
 - [12. Notice, attribution, license](#12-notice-attribution-license)
+
+---
+
+<a id="0-safe-mode"></a>
+
+## 0. Safe mode
+
+**This is the default in 1.1.9 and the reason for this release.** Older versions broke the dsh host as soon as the plugin was enabled: `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`, `ctx.agents.roots is not a function`, failed session creation, unreadable history, and in the worst case a modified dsh installation.
+
+| Intrusion point | Old behaviour | 1.1.9 safe mode |
+|---|---|---|
+| `cordis.patch.yml` | `- id: system-prompt` replaced the host's whole config with a `{{cwd}}` `personaSuffix` | **Removed**; host `system-prompt` left untouched |
+| Drill preset | `apply()` deployed `.agent-presets/redteam/` to `$DSH_HOME`; disabling left a dangling reference | Three rows `disabled` by default; all four redteam entry points inert |
+| Prompt injection | Wrote `prompt-inject.md` at boot; `{foo}` in body treated as unregistered variable | `injectEnabled: false`, no writes |
+| Global hooks | Installed `system-prompt/assemble`, `agent/pre-step`, `session/created`, pinned `danger-full-access` | No global hooks |
+| Host files | Unpacked `app.asar`, patched host files, injected shims, auto-restarted | Untouched; `autoApplyOnStart: false` |
+| Module load | `lib/redteam/tools.js` threw at import time | Lazy resolution, degrades instead of throwing |
+
+In safe mode only **read-only** surfaces are registered: `/purge status`, `/purge help`, the `purge_status` tool, and `GET /dsh-purge/status`. `apply()` is fully wrapped in try/catch, so an init error can never bubble into Cordis assembly. `node scripts/verify-safe-mode.mjs` runs 16 regression checks (static + a mock-Cordis dynamic probe) and is wired into CI.
+
+**Opting into full behaviour** (modifies the host, use at your own risk): in your profile's `cordis.patch.yml` set `dsh-purge.config.safeMode: false` and remove the `disabled` flags on the three `dsh-purge-redteam*` rows, then fully quit and restart the host, then click **Apply**. This mode is not compatible with dsh 0.2.2+.
+
+**Upgrading from an old version:** remove leftover `prompt-inject.md`, `.agent-presets/redteam/`, `dsh-purge/`, `redteam/` under `$DSH_HOME`, and any hand-written `- id: system-prompt` override in the profile patch, before installing 1.1.9.
 
 ---
 
@@ -132,10 +175,10 @@ Inside `profiles/<web|desktop>/package.json`, `"name"` must be `dsh-profile-web`
 
 ```powershell
 # Web host
-dsh plugin --profile web add https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile web add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
 
 # Desktop host (quit the desktop client first)
-dsh plugin --profile desktop add https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
 ```
 
 Same commands on macOS / Linux.
@@ -143,12 +186,12 @@ Same commands on macOS / Linux.
 Afterwards the profile `package.json` contains:
 
 ```json
-"dsh-purge": "https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz"
+"dsh-purge": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
 ```
 
 and `dsh.profile.bundles` ends with `"dsh-purge"`. **Both present = installed correctly.**
 
-> `repository / homepage / bugs / dsh.install` in `package.json` all point at `ZXEB/dsh-purge`, so the in-panel "check for updates" and repo links use this repository instead of the dead one.
+> `repository / homepage / bugs / dsh.install` in `package.json` all point at `Alanine-gH/dsh-purge`, so the in-panel "check for updates" and repo links use this repository instead of the dead one.
 
 ---
 
@@ -178,10 +221,10 @@ Only touch the profile of the host you actually run.
 The folder must be named `dsh-purge`, and `package.json` inside it must have `"name": "dsh-purge"`.
 
 ```sh
-git clone https://github.com/ZXEB/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
+git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
 ```
 
-No git: download [master.tar.gz](https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz), rename `dsh-purge-master` to `dsh-purge`, drop it into `plugins/`.
+No git: download [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz), rename `dsh-purge-master` to `dsh-purge`, drop it into `plugins/`.
 
 **Step 2 — edit the profile `package.json` (back it up first)**
 
@@ -328,29 +371,33 @@ Edit the `dsh-purge` entry in `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml
       inject: [systemPrompt, tools]
       config:
         enabled: true                 # master switch
+        safeMode: true                # v1.1.9 default: read-only, enabling changes nothing. false enables host-modifying mode
         autoApplyOnStart: false       # reapply patches on startup
         autoUpdateOnStart: false      # check for updates on startup
         autoRevertOnMissing: false    # reserved
         injectOnce: false             # reserved
-        stripMnemon: true             # drop the mnemon section
+        stripMnemon: false            # v1.1.9 safe default
         verbose: false                # verbose console logging
         postPrompt: ""                # extra prompt section (empty by default)
         postPromptOrder: 5100         # must exceed the built-in global order
-        autoRetry: true
+        autoRetry: false              # v1.1.9 safe default
         retryMax: 3
         autoContinue: false
         continueMax: 3
         continueText: "继续"
-        capabilityProtocol: true
-        hooksDenyBypass: true
+        capabilityProtocol: false     # v1.1.9 safe default
+        hooksDenyBypass: false        # v1.1.9 safe default
+        injectEnabled: false          # prompt injection off by default
+    # Drill console is disabled by default in 1.1.9 (no orphan preset is deployed).
     - id: dsh-purge-redteam
       name: dsh-purge/redteam
+      disabled: true
     - id: dsh-purge-redteam-store
       name: dsh-purge/redteam/store
-      config:
-        root: !!js dshHomePath('redteam')
+      disabled: true
     - id: dsh-purge-redteam-ui
       name: dsh-purge/redteam/ui
+      disabled: true
 ```
 
 The profile-level `cordis.patch.yml` (user patch layer) loads after built-in config, and later applies preserve your `insert` entries.
@@ -371,7 +418,7 @@ Applying (startup self-check or the Apply button) backs each target file up as `
 
 ```powershell
 dsh plugin --profile desktop remove dsh-purge
-dsh plugin --profile desktop add https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
 # quit → reopen → Clean → Apply
 ```
 
@@ -388,7 +435,7 @@ Publishing a new version: bump `package.json`, put `# <version>` as the first li
 1. **`add dsh-purge` returns 404** — the npm package is gone; use Route A/B/C.
 2. **`pnpm was not found`** — use dsh's bundled CLI (`resources\runtime\cli\bin\dsh.cmd`).
 3. **`plugin command failed`** — read the printed `logPath`; usually network, broken profile JSON, or a wrong `file:` path.
-4. **Version mismatch** — this package targets dsh `0.2.0-rc.2`. If you must cross versions: `dsh plugin --profile web allow-version dsh-purge@1.1.71 --dsh-version <exact> --accept-risk`.
+4. **Version mismatch** — this package targets dsh `0.2.0-rc.2`. If you must cross versions: `dsh plugin --profile web allow-version dsh-purge@1.1.9 --dsh-version <exact> --accept-risk`.
 5. **`allowBuilds` prompt** — add the exact key pnpm prints to `profiles/<p>/pnpm-workspace.yaml`; tarball / local installs never trigger it.
 6. **Desktop profile errors out** — start the desktop client once, quit it fully, retry.
 7. **No dock button** — wrong host, host not restarted, missing `dsh-purge` in `dsh.profile.bundles`, or `client.js` not copied.
@@ -406,7 +453,9 @@ Publishing a new version: bump `package.json`, put `# <version>` as the first li
 
 | Plugin | dsh | Notes |
 |---|---|---|
-| **1.1.71** (this repo) | **0.2.x** (desktop 0.2.0-rc.2 / `dsh web`) | full extraction |
+| **1.1.9** (this repo) | **0.2.x** (incl. 0.2.2-rc.2) | **Safe by default** — enabling does not modify the host; fixes enable-time crashes |
+| 1.8.0 | 0.2.x | old maintenance build; **enabling triggers `{{cwd}}` / `roots` crashes, do not use** |
+| 1.1.71 | 0.2.x (desktop 0.2.0-rc.2 / `dsh web`) | full extraction |
 | 1.1.40+ | 0.2.x | same line upstream |
 | ≤ 1.1.39 | 0.1.7 (incl. rc.1/rc.2) | older upstream line, not included here |
 
@@ -416,7 +465,7 @@ Publishing a new version: bump `package.json`, put `# <version>` as the first li
 
 ## 12. Notice, attribution, license
 
-**Attribution (original author's terms):** if you borrow this project's name, ideas, code or prompts, you must credit the author and name the source. Original: **`YuJunZhiXue/dsh-purge` (author: 小杨)**. This repository is the v1.1.71 mirror rebuild: **`ZXEB/dsh-purge`**.
+**Attribution (original author's terms):** if you borrow this project's name, ideas, code or prompts, you must credit the author and name the source. Original: **`YuJunZhiXue/dsh-purge` (author: 小杨)**. This repository is the v1.1.71 mirror rebuild: **`Alanine-gH/dsh-purge`**.
 
 **Scope**
 

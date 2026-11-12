@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'ZXEB/dsh-purge'
+    if: github.repository == 'Alanine-gH/dsh-purge'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -23,13 +23,11 @@ jobs:
 
       - name: Syntax-check plugin entry
         run: |
-          node --check lib/index.js
-          node --check lib/core.js
-          node --check lib/reapply.js
-          node --check lib/update.js
-          node --check lib/uninstall.js
-          node --check client.js
+          for f in lib/index.js lib/core.js lib/identity.js lib/safe-mode.js lib/reapply.js lib/update.js lib/uninstall.js lib/redteam/index.js lib/redteam/store.js lib/redteam/ui.js lib/redteam/tools.js client.js bin/dsh-purge.js; do node --check "$f" || exit 1; done
           node -e "const p=require('./package.json'); if(!p.name||!p.version) process.exit(1); console.log('package.json ok: '+p.name+'@'+p.version)"
+
+      - name: Regression guard - no host-crashing patch
+        run: node scripts/verify-safe-mode.mjs
 
       - name: Publish GitHub Release
         env:
@@ -62,4 +60,4 @@ jobs:
           fi
           test -s "$zip"
           gh release upload "$tag" "$zip" --clobber
-          echo "published https://github.com/ZXEB/dsh-purge/releases/tag/${tag}"
+          echo "published https://github.com/Alanine-gH/dsh-purge/releases/tag/${tag}"

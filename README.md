@@ -2,18 +2,18 @@
   <img src="docs/banner.svg" alt="dsh-purge" width="720">
 </p>
 
-<h1 align="center">⚔️ dsh-purge — DeepSeek Harness 破甲 / 红队评测插件</h1>
+<h1 align="center">⚔️ dsh-purge — DeepSeek Harness 清洗 / 红队评测插件</h1>
 
-<p align="center"><strong>镜像重建版 v1.1.71</strong></p>
+<p align="center"><strong>v1.1.9 · 安全默认版</strong></p>
 
 <p align="center">
-  <em>完整源码取自原仓库 <code>YuJunZhiXue/dsh-purge</code> v1.1.71（原仓库与 npm 包均已删除），本仓库只做保存与再分发，署名要求照旧。</em>
+  <em>完整源码取自原仓库 <code>YuJunZhiXue/dsh-purge</code> v1.1.71（原仓库已删），署名要求照旧。</em>
 </p>
 
 <p align="center">
-  <img src="https://img.shields.io/badge/version-1.1.71-1a73e8?style=flat" alt="version">
+  <img src="https://img.shields.io/badge/version-1.1.9-1a73e8?style=flat" alt="version">
   <img src="https://img.shields.io/badge/license-MIT-65a30d?style=flat" alt="MIT">
-  <img src="https://img.shields.io/badge/dsh-0.2.0--rc.2-blue" alt="dsh 0.2">
+  <img src="https://img.shields.io/badge/dsh-0.2.x-blue" alt="dsh 0.2.x">
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18-339933?logo=node.js&logoColor=fff" alt="Node.js">
 </p>
 
@@ -21,12 +21,34 @@
   <a href="README.md">中文</a> | <a href="README.en.md">English</a>
 </p>
 
-> **这是一个「提取完整版」仓库。** 原作者的 GitHub 仓库已删、npm 上的 `dsh-purge` 也已 404，所以 **`dsh plugin add dsh-purge` 这种按包名安装的方式现在装不上**，必须按本文的 **tarball / 本地目录 / 手动** 三种方式装。装完必须重启宿主，并在「清洗 → 应用」里点一次，才会有实际效果。
+> ## ⚠️ v1.1.9 重要变更：默认安全模式
+>
+> 旧版（1.8.0 及更早）**一启用插件就会让 dsh 宿主运行失败**：报
+> `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`、
+> `ctx.agents.roots is not a function`、新建会话失败、历史对话读不出来，
+> 甚至会解包并改写 dsh 安装本体。原因是插件在组装前覆盖宿主的
+> `system-prompt` 配置、写带模板变量的 `personaSuffix`，并在启动时落预设 /
+> 挂全局钩子 / 重启宿主，与 dsh 0.2.2+ 不兼容。
+>
+> **1.1.9 起默认 `safeMode: true`：安装 → 启用不会改动宿主任何文件。**
+> 插件只提供只读的 `/purge status`、`purge_status` 工具和状态端点；
+> 不写 `prompt-inject.md`、不落 `.agent-presets`、不解包 `app.asar`、
+> 不注入提示词、不改权限、不重启、不注册全局 event 钩子。
+> 详见 [安全模式](#安全模式-safe-mode) 一节。
+>
+> 需要旧版那种「会修改宿主」的完整能力，必须**显式**把
+> `cordis.patch.yml` 里 `dsh-purge.config.safeMode` 设为 `false`，
+> 并去掉 `dsh-purge-redteam*` 三行的 `disabled`，然后重启宿主。
+> **该模式与 dsh 0.2.2+ 不兼容，风险自负。**
+>
+> 本仓库地址是 <code>Alanine-gH/dsh-purge</code>；npm 上的 `dsh-purge` 已重新发布 1.1.9，
+> 可以直接 `dsh plugin add dsh-purge`，也可用下面的 tarball / 本地目录 / 手动方式。
 
 ---
 
 ## 目录
 
+- [〇、安全模式（Safe mode）](#安全模式-safe-mode)
 - [一、这是什么](#一这是什么)
 - [二、能力总览](#二能力总览)
 - [三、环境要求](#三环境要求)
@@ -47,6 +69,64 @@
 - [十、常见问题（FAQ）](#十常见问题faq)
 - [十一、兼容性](#十一兼容性)
 - [十二、声明、署名与许可](#十二声明署名与许可)
+
+---
+
+<a id="安全模式-safe-mode"></a>
+
+## 〇、安全模式（Safe mode）
+
+**这是 1.1.9 的默认行为，也是本次修复的核心。** 之前用户反馈「只要安装并打开，dsh 就运行失败」，报
+`unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`、
+`ctx.agents.roots is not a function`、会话建不了 / 对话读不出来，甚至 dsh 安装本体被改坏。
+
+| 侵入点 | 旧版 | 1.1.9 安全模式 |
+|---|---|---|
+| `cordis.patch.yml` | `- id: system-prompt` 整体替换宿主配置，写 `personaSuffix` 含 `{{cwd}}` | **不再覆盖**宿主 `system-prompt`，交回宿主自己管 |
+| 演练台预设 | 启动时把 `.agent-presets/redteam/` 落到 `$DSH_HOME`，禁用后引用悬空 | 三行默认 `disabled`，四个入口安全模式下空转 |
+| 提示词注入 | 启动即写 `prompt-inject.md`，正文 `{foo}` 被当未注册变量 | `injectEnabled: false`，不写盘 |
+| 全局钩子 | 挂 `system-prompt/assemble`、`agent/pre-step`、`session/created` 并钉 `danger-full-access` | 不注册任何全局钩子 |
+| 宿主文件 | 解包 `app.asar`、改写宿主文件、注入 shim、自动重启 | 不触碰；`autoApplyOnStart: false` |
+| 模块加载 | `lib/redteam/tools.js` 在 import 阶段 throw，连累整个 bundle | 惰性解析，缺包降级不抛 |
+
+安全模式下插件只注册**只读**接口：
+
+- 聊天命令 `/purge status`、`/purge help`
+- 模型工具 `purge_status`
+- HTTP `GET /dsh-purge/status`（整条 `/dsh-purge` 前缀统一返回只读状态，写操作不执行）
+
+`apply()` 全程有 try/catch 兜底：即使宿主 API 不匹配，插件也只会降级为惰性，**不会把异常抛回 Cordis 装配流程**。仓库自带 `node scripts/verify-safe-mode.mjs` 回归自检（16 项），已接入 GitHub Actions。
+
+### 如何启用完整能力（会修改宿主，风险自负）
+
+编辑 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，在 `dsh-purge` 的 insert 配置里：
+
+```yaml
+- insert:
+    - id: dsh-purge
+      name: 'dsh-purge'
+      inject: [systemPrompt, tools]
+      config:
+        safeMode: false          # 关闭安全默认
+        autoApplyOnStart: false  # 建议仍保持关，手动点「应用」
+        injectEnabled: false     # 需要注入时再开
+    - id: dsh-purge-redteam        # 去掉以下三行的 disabled
+      name: dsh-purge/redteam
+    - id: dsh-purge-redteam-store
+      name: dsh-purge/redteam/store
+    - id: dsh-purge-redteam-ui
+      name: dsh-purge/redteam/ui
+```
+
+然后**完全退出并重启宿主**，进「清洗 → 应用」。注意：完整模式是就地改写本机 dsh 安装文件，
+宿主升级（尤其 0.2.2+）后补丁针脚可能失配，这正是本次故障的来源；不确认就不要开。
+
+### 从旧版升级
+
+旧版可能已在 `$DSH_HOME` 留下 `prompt-inject.md`、`.agent-presets/redteam/`、`dsh-purge/`、
+`redteam/` 等状态目录，以及 `cordis.patch.yml` 里手写的 `- id: system-prompt` 覆盖段。
+装 1.1.9 前建议先退出宿主，删掉这些残留与旧的 `system-prompt` 覆盖，再安装；
+否则旧覆盖段仍会让宿主报 `unknown prompt variable`。
 
 ---
 
@@ -91,7 +171,7 @@
 
 | 项 | 要求 |
 |---|---|
-| dsh | **0.2.x**，本包 `dshTarget` 为 `0.2.0-rc.2`（0.1.x 不要用，会显示跳过或版本不匹配） |
+| dsh | **0.2.x**（含 0.2.2-rc.2）；本包 `dshTarget` 仍写 `0.2.0-rc.2`，为该历史版本的声明值，0.1.x 不要用 |
 | 宿主 | 官方桌面 EXE（profile `desktop`）或官方 `dsh web`（profile `web`） |
 | Node.js | **≥ 18**；Windows 下要「无闪窗」需要 **≥ 22** |
 | 包管理器 | 用 dsh 自带的 pnpm（`dsh plugin` 会调用它），不必单独装 |
@@ -136,10 +216,10 @@ ls -d "${DSH_HOME:-$HOME/.dsh}"/profiles 2>/dev/null
 
 ```powershell
 # Web 宿主
-dsh plugin --profile web add https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile web add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
 
 # 桌面宿主（先完全退出桌面客户端）
-dsh plugin --profile desktop add https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
 ```
 
 macOS / Linux 同一条命令。
@@ -147,12 +227,12 @@ macOS / Linux 同一条命令。
 装完 profile 的 `package.json` 里会多出一条依赖：
 
 ```json
-"dsh-purge": "https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz"
+"dsh-purge": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
 ```
 
 同时在 `dsh.profile.bundles` 末尾自动登记 `dsh-purge`。**两条都在 = 装对了。**
 
-> 仓库已把 `package.json` 的 `repository / homepage / bugs / dsh.install` 全部指向 `ZXEB/dsh-purge`，所以「检查更新」与面板里的仓库链接都走本仓库，不会再打原来的死链。
+> 仓库已把 `package.json` 的 `repository / homepage / bugs / dsh.install` 全部指向 `Alanine-gH/dsh-purge`，所以「检查更新」与面板里的仓库链接都走本仓库，不会再打原来的死链。
 
 ---
 
@@ -188,10 +268,10 @@ dsh plugin --profile web add .
 目录名必须是 `dsh-purge`，里面 `package.json` 的 `"name"` 也必须是 `dsh-purge`。
 
 ```sh
-git clone https://github.com/ZXEB/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
+git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
 ```
 
-没有 git 就下载 [master.tar.gz](https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz)，解压后把 `dsh-purge-master` 改名成 `dsh-purge`，整夹放进 `plugins/`。
+没有 git 就下载 [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz)，解压后把 `dsh-purge-master` 改名成 `dsh-purge`，整夹放进 `plugins/`。
 
 **第 2 步：备份并修改 profile 的 `package.json`**
 
@@ -364,29 +444,33 @@ purge_status   purge_apply   purge_revert
       inject: [systemPrompt, tools]
       config:
         enabled: true                 # 插件总开关
+        safeMode: true                # v1.1.9 默认：只读，启用不改宿主。false 才启用会改宿主的完整能力
         autoApplyOnStart: false       # 启动时自动应用补丁（默认关；开了才每次启动自检重应用）
         autoUpdateOnStart: false      # 启动时检查更新
         autoRevertOnMissing: false    # 保留字段
         injectOnce: false             # 保留字段
-        stripMnemon: true             # 去掉 mnemon 段
+        stripMnemon: false            # v1.1.9 安全默认
         verbose: false                # 控制台详细日志
         postPrompt: ""                # 额外提示段（默认空）
         postPromptOrder: 5100         # 需大于内置全局顺序，否则该段被跳过
-        autoRetry: true               # 失败自动重试
+        autoRetry: false              # v1.1.9 安全默认
         retryMax: 3
         autoContinue: false           # 自动续跑
         continueMax: 3
         continueText: "继续"
-        capabilityProtocol: true      # 注入能力协议段
-        hooksDenyBypass: true         # 跳过 hooks 拒绝拦截
+        capabilityProtocol: false     # v1.1.9 安全默认
+        hooksDenyBypass: false        # v1.1.9 安全默认
+        injectEnabled: false          # 提示词注入默认关闭
+    # 演练台 1.1.9 默认停用：不往 $DSH_HOME/.agent-presets 落悬空预设
     - id: dsh-purge-redteam
       name: dsh-purge/redteam
+      disabled: true
     - id: dsh-purge-redteam-store
       name: dsh-purge/redteam/store
-      config:
-        root: !!js dshHomePath('redteam')
+      disabled: true
     - id: dsh-purge-redteam-ui
       name: dsh-purge/redteam/ui
+      disabled: true
 ```
 
 profile 层的 `cordis.patch.yml`（用户 patch 层）在内置配置之后加载，后续应用插件会保留你的 `insert`，不会被旧备份覆盖。
@@ -421,11 +505,11 @@ flowchart TD
 
 ```powershell
 dsh plugin --profile desktop remove dsh-purge
-dsh plugin --profile desktop add https://github.com/ZXEB/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
 # 然后完全退出宿主 → 重开 → 清洗 → 应用
 ```
 
-面板里也有「更新 / 切换到正式版」，读的是本仓库（`package.json` 的 repository / homepage 已指向 `ZXEB/dsh-purge`）。发新版流程：改 `package.json` 版本号 → `release-notes.md` 首行写 `# <版本>` → 推 `master`，Actions 自动出 Release 与 zip。
+面板里也有「更新 / 切换到正式版」，读的是本仓库（`package.json` 的 repository / homepage 已指向 `Alanine-gH/dsh-purge`）。发新版流程：改 `package.json` 版本号 → `release-notes.md` 首行写 `# <版本>` → 推 `master`，Actions 自动出 Release 与 zip。
 
 **还原**（保留插件，只回原版宿主）：
 
@@ -463,7 +547,7 @@ dsh-purge --uninstall     # 或 /purge uninstall，或面板「清洗 → 卸载
 本包 `dshTarget` 是 `0.2.0-rc.2`。确认 dsh 是 0.2.x；确实要冒险跨版本按提示执行：
 
 ```sh
-dsh plugin --profile web allow-version dsh-purge@1.1.71 --dsh-version <你的精确版本> --accept-risk
+dsh plugin --profile web allow-version dsh-purge@1.1.9 --dsh-version <你的精确版本> --accept-risk
 ```
 
 **5. pnpm 提示 `allowBuilds`（git 依赖的 prepare 脚本被拦）**
@@ -501,7 +585,9 @@ dsh plugin --profile web allow-version dsh-purge@1.1.71 --dsh-version <你的精
 
 | 插件版本 | 适配 dsh | 说明 |
 |---|---|---|
-| **1.1.71**（本仓库） | **0.2.x**（官方桌面 0.2.0-rc.2 / 官方 `dsh web`） | 完整提取版 |
+| **1.1.9**（本仓库） | **0.2.x**（含 0.2.2-rc.2） | **安全默认版**：启用不改宿主，修复启用即崩 |
+| 1.8.0 | 0.2.x | 旧维护版，**启用会触发 `{{cwd}}` / `roots` 崩溃，勿用** |
+| 1.1.71 | 0.2.x（官方桌面 0.2.0-rc.2 / `dsh web`） | 完整提取版 |
 | 1.1.40 及以上 | 0.2.x | 原仓库同线版本 |
 | 1.1.39 及以下 | 0.1.7（含 rc.1 / rc.2） | 原仓库旧线，本仓库不含 |
 
@@ -513,7 +599,7 @@ dsh plugin --profile web allow-version dsh-purge@1.1.71 --dsh-version <你的精
 
 ## 十二、声明、署名与许可
 
-**署名要求（沿用原作者条款）**：借用本项目的名称、思路、代码或提示词，必须署名并写明来源。原始来源：**`YuJunZhiXue/dsh-purge`（作者：小杨）**；本仓库为该版本的镜像重建：**`ZXEB/dsh-purge`**。去掉署名、隐去来源、据为己有会被追究。
+**署名要求（沿用原作者条款）**：借用本项目的名称、思路、代码或提示词，必须署名并写明来源。原始来源：**`YuJunZhiXue/dsh-purge`（作者：小杨）**；本仓库为该版本的镜像重建与 1.1.9 安全修复版：**`Alanine-gH/dsh-purge`**。去掉署名、隐去来源、据为己有会被追究。
 
 **用途与边界**
 

@@ -24,16 +24,18 @@
   name: dsh-redteam-mode/ui
   disabled: true
 
-- id: system-prompt
-  config:
-    includeHarnessIdentity: false
-    personaPrefix: ""
-    # v1.8.1：宿主 0.2.2+ 不再注册 cwd 变量，写 {{cwd}} 会让 persona-suffix 段
-    # 组装失败（unknown prompt variable）、整轮报错。留空由 working-directory service 提供。
-    personaSuffix: ""
-
-- id: dsh-purge
-  inject: [systemPrompt, tools]
+# ── v1.1.9 安全默认 ───────────────────────────────────────────────────────────
+# 旧版在这里用 `- id: system-prompt` 覆盖宿主 system-prompt 的 config，写入
+# personaSuffix: "Your working directory is {{cwd}}."。宿主 0.2.2+ 的
+# deployment:persona-suffix 段只注册 provider/model，{{cwd}} 会被判为
+# unknown prompt variable → 一启用插件每一轮都失败；而 Loader 对 `- id` 是
+# 「整体替换 config、不做深合并」，还会把宿主其余配置清空。两条一并删除，
+# 宿主 system-prompt 完全交回宿主自己管，插件不再在组装前碰它。
+#
+# 旧版还 insert 三个演练台服务，并在 apply() 里把 .agent-presets/redteam/
+# 落到 $DSH_HOME；预设引用 dsh-purge/redteam/tools，插件一禁用引用就悬空，
+# gateway 新建会话直接崩（ctx.agents.roots is not a function / 创建会话失败）。
+# 现在三行默认 disabled，且 lib/redteam/index.js 在安全模式下不落预设。
 
 - insert:
     - id: dsh-purge
@@ -41,34 +43,38 @@
       inject: [systemPrompt, tools]
       config:
         enabled: true
+        # 默认安全模式：apply() 只注册只读状态命令 / 工具 / HTTP 端点，
+        # 不写宿主文件、不解包 app.asar、不注入提示词、不改权限、不自动重启。
+        # 只有显式写成 false 才启用旧版会修改 dsh 安装文件的完整能力。
+        safeMode: true
         autoApplyOnStart: false
         autoUpdateOnStart: false
         autoRevertOnMissing: false
         injectOnce: false
-        stripMnemon: true
+        stripMnemon: false
         verbose: false
         postPrompt: ""
         postPromptOrder: 5100
-        autoRetry: true
+        autoRetry: false
         retryMax: 3
         autoContinue: false
         continueMax: 3
         continueText: "继续"
-        capabilityProtocol: true
-        hooksDenyBypass: true
-        # v1.8.0：提示词注入开关，默认关闭。设置页可随时切换，改动立即生效。
+        capabilityProtocol: false
+        hooksDenyBypass: false
+        # 提示词注入开关默认关闭；安全模式下即使打开也不会写盘。
         injectEnabled: false
 
-    # 演练台：预设 + 技能落地（本插件 lib/redteam）
+    # 演练台默认停用：不再往 $DSH_HOME/.agent-presets 落悬空预设。
+    # 需要演练台时：去掉以下三行的 disabled，并把 safeMode 设为 false，重启宿主。
     - id: dsh-purge-redteam
       name: dsh-purge/redteam
+      disabled: true
 
-    # 演练台事实库（SQLite），数据在 $DSH_HOME/redteam
     - id: dsh-purge-redteam-store
       name: dsh-purge/redteam/store
-      config:
-        root: !!js dshHomePath('redteam')
+      disabled: true
 
-    # 演练台 HTTP 桥 POST /redteam/api
     - id: dsh-purge-redteam-ui
       name: dsh-purge/redteam/ui
+      disabled: true

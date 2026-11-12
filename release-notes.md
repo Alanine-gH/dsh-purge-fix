@@ -1,3 +1,51 @@
+# 1.1.9
+
+## 中文
+
+**安全默认：启用插件不再改动宿主任何文件，修复「安装 → 启用」即让 dsh 运行失败。**
+
+这一版是为 0.2.2+ 宿主做的兼容性重写。此前一启用插件，宿主报
+`unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`
+（该段只注册 `provider` / `model`）、或 `ctx.agents.roots is not a function`、
+或启动期崩溃、会话建不了 / 历史对话读不出来，甚至把 dsh 安装本体改坏。
+
+根因与处置：
+
+| 侵入点 | 旧行为 | 1.1.9 |
+|---|---|---|
+| `cordis.patch.yml` | `- id: system-prompt` 整体替换宿主配置并写 `personaSuffix: "Your working directory is {{cwd}}."` | **删除**，宿主 system-prompt 交回宿主自己管 |
+| 演练台预设 | `apply()` 把 `.agent-presets/redteam/` 落到 `$DSH_HOME`，预设引用 `dsh-purge/redteam/tools`；禁用插件后引用悬空 → 新建会话失败 | 三行默认 `disabled: true`，且四个入口在安全模式下全部空转 |
+| 提示词注入 | 启动即写 `prompt-inject.md`，正文里 `{foo}` 被当未注册变量 | `injectEnabled: false`，安全模式不写盘 |
+| 宿主钩子 | 挂 `system-prompt/assemble`、`agent/pre-step`、`session/created` 全局钩子并钉 `danger-full-access` | 安全模式**不注册任何全局钩子** |
+| 安装文件 | 解包 `app.asar`、改写宿主文件、注入 shim、自动重启 | `autoApplyOnStart: false`，安全模式不触碰 |
+| 模块加载 | `lib/redteam/tools.js` 在 import 阶段 `throw`（宿主包解析不到时连累整个 bundle） | 改为惰性解析，缺包降级不抛 |
+
+- 默认 `safeMode: true`。此时 `apply()` 只注册只读的 `/purge status`、`purge_status` 工具与 `/dsh-purge/status` HTTP 端点，`DSH_HOME` 零写入，`apply()` 全程 try/catch 兜底，异常不会冒泡打断 Cordis 装配。
+- 需要完整（会修改宿主的）能力：在 profile 的 `cordis.patch.yml` 把 `dsh-purge.config.safeMode` 设为 `false`，并去掉 `dsh-purge-redteam*` 三行的 `disabled`，然后重启宿主。**该模式与 0.2.2+ 不兼容，风险自负。**
+- 仓库地址统一改为 `Alanine-gH/dsh-purge`（原先指向已失效的 `ZXEB/dsh-purge`，导致「检查更新」与 Release 都不工作）；`release.yml` 的仓库判定同步修正。
+- 新增 `scripts/verify-safe-mode.mjs` 回归自检并接入 CI：静态校验 patch 不含 `system-prompt` 覆盖 / `{{cwd}}` 模板，动态用 mock ctx 断言启用后零写入、零全局钩子、不抛异常。
+
+## English
+
+**Safe by default: enabling the plugin no longer modifies the host, fixing the "install → enable → dsh fails" crash.**
+
+Compatibility rewrite for dsh 0.2.2+. Previously, enabling triggered
+`unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`,
+`ctx.agents.roots is not a function`, boot-time crashes, and broken session
+creation — and could damage the dsh installation itself.
+
+- Removed the `cordis.patch.yml` `- id: system-prompt` override that replaced the host's whole config with a `personaSuffix` containing `{{cwd}}`.
+- The three drill-console rows are `disabled: true` by default, and all four redteam entry points are inert in safe mode, so no orphan `.agent-presets/redteam/` preset is written.
+- `injectEnabled: false`; safe mode writes nothing to `DSH_HOME` and registers no global event hooks, no permission pinning, no restart, no asar unpacking.
+- `apply()` is fully guarded, so plugin init errors can never bubble into Cordis assembly.
+- `lib/redteam/tools.js` no longer throws at import time when the host package cannot be resolved.
+- All repository links now point at `Alanine-gH/dsh-purge`.
+- `scripts/verify-safe-mode.mjs` added to CI as a regression guard.
+
+To opt into the full (host-modifying) behaviour, set `config.safeMode: false` and remove the `disabled` flags on the `dsh-purge-redteam*` rows, then restart. Not compatible with dsh 0.2.2+.
+
+---
+
 # 1.8.0
 
 本地维护版（上游不再更新，源码就地修改）。
