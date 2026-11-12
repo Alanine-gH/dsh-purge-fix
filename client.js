@@ -449,6 +449,12 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"hooksDeny.bypass": "放行 hooks 的 deny / ask（补丁 30 / 31 / 64 / 65）",
 			"hooksDeny.hint": "关掉后，用户自己的 PreToolUse / UserPromptSubmit / Stop hook 的 deny 会按官方逻辑生效。官方 ask 分支本身是空操作，关开关不会弹出审批框。改完后点「应用」并重启才写进宿主。",
 			"saved.hooksDeny": "已保存",
+			"injectSwitch.title": "提示词注入",
+			"injectSwitch.enable": "把 $DSH_HOME/prompt-inject.md 全文挂到每轮系统提示词头部",
+			"injectSwitch.hint": "默认关闭。关闭时人设回到 DSH 默认，不再读取该文件；打开后按原文全文注入。注入正文里的 {变量} 占位符会以纯文本处理，不会被当作模板变量解析。改完立刻生效，无需点「应用」。",
+			"injectSwitch.on": "已开启",
+			"injectSwitch.off": "已关闭",
+			"saved.injectSwitch": "已保存",
 			"continue.title": "失败重试 / 继续",
 			"continue.hint": "请求失败会自动重试；异常停止或中断可点「继续」或自动续跑。自己点停止不会自动继续。次数用完后需新开一轮。",
 			"continue.autoRetry": "失败自动重试",
@@ -789,6 +795,12 @@ window.__ModuleLoader__.load({ id: "dsh-purge", factory: (require) => {
 			"hooksDeny.bypass": "Bypass hook deny / ask (patches 30 / 31 / 64 / 65)",
 			"hooksDeny.hint": "When off, your own PreToolUse / UserPromptSubmit / Stop hook deny runs as the official host wrote it. The official ask branch is a no-op; turning this off will not show an approval dialog. Click Apply and restart to write the host files.",
 			"saved.hooksDeny": "Saved",
+			"injectSwitch.title": "Prompt injection",
+			"injectSwitch.enable": "Hang the full $DSH_HOME/prompt-inject.md at the head of every system prompt",
+			"injectSwitch.hint": "Off by default. When off, the persona falls back to DSH defaults and the file is not read; when on, the full text is injected verbatim. Braced {placeholders} in the injected text are treated as plain text, never as template variables. Takes effect immediately, no Apply needed.",
+			"injectSwitch.on": "On",
+			"injectSwitch.off": "Off",
+			"saved.injectSwitch": "Saved",
 			"continue.title": "Retry / Continue",
 			"continue.hint": "Failed requests auto-retry. After an abnormal stop or interrupt, use Continue or auto-resume. A manual stop never auto-continues. Counts reset after a completed turn.",
 			"continue.autoRetry": "Auto-retry on failure",
@@ -1230,6 +1242,65 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 							onChange: (e) => save(e.target.checked),
 						}),
 						t("hooksDeny.bypass"),
+					),
+				),
+			);
+		}
+
+		// v1.8.0：提示词注入开关。默认关闭，改动立即生效（服务端会刷新内存钉子）。
+		function InjectSwitchSection() {
+			const t = useT();
+			const [on, setOn] = useState(false);
+			const [loaded, setLoaded] = useState(false);
+			const [notice, setNotice] = useState({ kind: "idle", text: "" });
+			const [busy, setBusy] = useState(false);
+
+			useEffect(() => {
+				apiJson("/dsh-purge/inject-switch")
+					.then((d) => { if (d && d.ok) setOn(d.injectEnabled === true); })
+					.catch(() => {})
+					.finally(() => setLoaded(true));
+			}, []);
+
+			const save = (next) => {
+				if (busy) return;
+				const prev = on;
+				setOn(next);
+				setBusy(true);
+				apiJson("/dsh-purge/inject-switch", {
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ injectEnabled: next }),
+				})
+					.then((d) => {
+						if (d && d.ok) {
+							setOn(d.injectEnabled === true);
+							setNotice({ kind: "ok", text: t("saved.injectSwitch") + " · " + (d.injectEnabled ? t("injectSwitch.on") : t("injectSwitch.off")) });
+						} else {
+							setOn(prev);
+							setNotice({ kind: "error", text: t("err.save", { error: (d && d.error) || "" }) });
+						}
+					})
+					.catch((e) => { setOn(prev); setNotice({ kind: "error", text: t("err.save", { error: e.message }) }); })
+					.finally(() => setBusy(false));
+			};
+
+			if (!loaded) return null;
+			return h("div", { className: "dshp-cr", style: { marginTop: 12 } },
+				h("div", { className: "dshp-sub" },
+					h("h4", null, t("injectSwitch.title")),
+					noticeNode(notice),
+				),
+				h("p", { className: "dshp-hint", style: { margin: "0 0 4px", color: "var(--dshp-mute)", fontSize: 12 } }, t("injectSwitch.hint")),
+				h("div", { className: "dshp-cr-row" },
+					h("label", null,
+						h("input", {
+							type: "checkbox",
+							checked: on === true,
+							disabled: busy,
+							onChange: (e) => save(e.target.checked),
+						}),
+						t("injectSwitch.enable"),
 					),
 				),
 			);
@@ -1944,6 +2015,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 				h("div", { className: "dshp-bar", "aria-hidden": "true" }, h("i", { style: { width: pct + "%" } })),
 				h(PatchGroups, { state: s }),
 				h(HooksDenySection, { onSaved: loadAll }),
+				h(InjectSwitchSection, null),
 				h("div", { className: "dshp-row", style: { marginTop: 14 } },
 					h(Btn, { kind: "primary", disabled: patchBusy || uninstallBusy || !overrideLoaded, onClick: () => doAction("apply", "action.apply") }, patchBusy ? t("btn.apply.busy") : t("btn.apply")),
 					h(Btn, { kind: "danger", disabled: patchBusy || uninstallBusy, onClick: () => doAction("revert", "action.revert") }, t("btn.revert")),

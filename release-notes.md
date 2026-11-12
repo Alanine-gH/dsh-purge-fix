@@ -1,3 +1,25 @@
+# 1.8.0
+
+本地维护版（上游不再更新，源码就地修改）。
+
+## 中文
+
+- **提示词注入开关**：设置页新增「提示词注入」复选框，默认**关闭**。关闭时完全不读取 `$DSH_HOME/prompt-inject.md`，人设回到 DSH 默认；打开后按原文全文挂载。改动立即生效，无需点「应用」。状态落盘到 `$DSH_HOME/dsh-purge/inject-switch.json`，优先于 `cordis.patch.yml` 里的 `injectEnabled` 默认值。
+- **修复「unknown prompt variable」整轮失败**：注入正文是纯文本数据，但 DSH 的 persona 段只注册 `cwd` / `model` / `provider`，正文里任意 `{foo}`（或历史遗留的 `{joyfully}`）会被当未注册变量抛错、整轮运行失败。现 `escapeDshInterpolation` 同时识别单/双花括号占位符：白名单双花括号变量原样交给宿主展开，其余改成全角括号中和；JSON / 代码 / LaTeX 的结构性花括号不动。cordis 组装与 host 四重兜底两条路径都已覆盖。
+- **补齐随包技能**：安装时漏掉的 `skills/redteam/unauth-exploit.md` 已补入插件包与 `$DSH_HOME/redteam/skills`（23/23），消除预设登记时报 `open ... unauth-exploit.md` 失败。
+- **适配新版 dsh 预设**：移除红队预设里已废弃的 `toolFilter`（新版报 "toolFilter is no longer supported"，导致「红队模式」登记失败、模式下拉被过滤）；叶子约束保留 `maxDepth: 1`。
+- **工具箱按工具名分目录可识别**：`resolveTool` 扫 toolkit 时会额外扫一级子目录（`frp/` 同时放 `frpc` + `frps` 等），PATH 扫描仍不递归以免拖慢。
+- 版本 **1.8.0**。插件不替用户下载或安装任何工具二进制；工具路径请在「演练台 → 环境适配」自行填写或用整包文件夹自动分配。
+
+## English
+
+- **Prompt-injection switch**: new checkbox in settings, **off** by default. When off, `$DSH_HOME/prompt-inject.md` is never read and the persona falls back to DSH defaults; when on, the full text is injected verbatim. Takes effect immediately, no Apply needed. Persisted to `$DSH_HOME/dsh-purge/inject-switch.json`, taking precedence over the `injectEnabled` default in `cordis.patch.yml`.
+- **Fix "unknown prompt variable" turn failures**: injected text is plain data, but the persona section only registers `cwd` / `model` / `provider`, so any `{foo}` in the body was treated as an unregistered variable and failed the whole turn. `escapeDshInterpolation` now handles both single and double braces: whitelisted double-brace vars pass through, all other placeholders are neutralised to full-width brackets; structural braces in JSON / code / LaTeX are untouched. Both the cordis assembly path and the host four-tier fallback are covered.
+- **Restore bundled skill**: the missing `skills/redteam/unauth-exploit.md` is back in the package and in `$DSH_HOME/redteam/skills` (23/23), fixing preset registration failing on `open ... unauth-exploit.md`.
+- **Newer dsh preset compatibility**: dropped the removed `toolFilter` from the redteam preset ("toolFilter is no longer supported" made "红队模式" fail to register and disappear from the mode dropdown); `maxDepth: 1` still keeps children as leaves.
+- **Per-tool subdirectories**: `resolveTool` now also scans one level of named subdirectories under the toolkit (`frp/` holding both `frpc` and `frps`, etc.); PATH scanning stays non-recursive.
+- **1.8.0**. The plugin never downloads or installs tool binaries; configure paths under Drill → Environment Adaptation.
+
 # 1.1.71
 
 ## 中文

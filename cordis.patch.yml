@@ -28,7 +28,9 @@
   config:
     includeHarnessIdentity: false
     personaPrefix: ""
-    personaSuffix: Your working directory is {{cwd}}.
+    # v1.8.1：宿主 0.2.2+ 不再注册 cwd 变量，写 {{cwd}} 会让 persona-suffix 段
+    # 组装失败（unknown prompt variable）、整轮报错。留空由 working-directory service 提供。
+    personaSuffix: ""
 
 - id: dsh-purge
   inject: [systemPrompt, tools]
@@ -54,6 +56,8 @@
         continueText: "继续"
         capabilityProtocol: true
         hooksDenyBypass: true
+        # v1.8.0：提示词注入开关，默认关闭。设置页可随时切换，改动立即生效。
+        injectEnabled: false
 
     # 演练台：预设 + 技能落地（本插件 lib/redteam）
     - id: dsh-purge-redteam
