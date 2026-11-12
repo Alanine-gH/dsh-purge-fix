@@ -1,5 +1,9 @@
 # 1.1.9
 
+> **包名变更**：npm 包从 `dsh-purge` 改为 **`dsh-purge-fix`**（旧名由其他账号占用，无权发布）。
+> 安装用 `dsh plugin add dsh-purge-fix`。GitHub 仓库仍为 `Alanine-gH/dsh-purge`，
+> 状态目录 / HTTP 路由 / 提示词段名等内部标识保持 `dsh-purge` 不变，升级不受影响。
+
 ## 中文
 
 **安全默认：启用插件不再改动宿主任何文件，修复「安装 → 启用」即让 dsh 运行失败。**

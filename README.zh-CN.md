@@ -2,9 +2,11 @@
   <img src="docs/banner.svg" alt="dsh-purge" width="720">
 </p>
 
-<h1 align="center">⚔️ dsh-purge（中文文档）</h1>
+<h1 align="center">⚔️ dsh-purge-fix（中文文档）</h1>
 
-<p align="center"><strong>v1.1.9 · 安全默认版</strong></p>
+<p align="center"><strong>v1.1.9 · 安全默认版 · npm 包名 <code>dsh-purge-fix</code></strong></p>
+
+> 📦 **npm 包名已改为 `dsh-purge-fix`**（旧名被其他账号占用）。GitHub 仓库仍是 `Alanine-gH/dsh-purge`；状态目录、HTTP 路由等内部标识不变。
 
 > **中文完整文档已合并到 [`README.md`](README.md)。** 本文件保留仅为兼容旧链接与插件自更新时复制的文件清单。
 >
@@ -24,7 +26,7 @@
 
 ```powershell
 # 最短路径：npm 包名安装（1.1.9 已重新发布）
-dsh plugin --profile desktop add dsh-purge
+dsh plugin --profile desktop add dsh-purge-fix
 
 # 或从仓库 tarball
 dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz

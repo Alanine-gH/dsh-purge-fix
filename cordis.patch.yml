@@ -39,7 +39,7 @@
 
 - insert:
     - id: dsh-purge
-      name: 'dsh-purge'
+      name: 'dsh-purge-fix'
       inject: [systemPrompt, tools]
       config:
         enabled: true
@@ -68,13 +68,13 @@
     # 演练台默认停用：不再往 $DSH_HOME/.agent-presets 落悬空预设。
     # 需要演练台时：去掉以下三行的 disabled，并把 safeMode 设为 false，重启宿主。
     - id: dsh-purge-redteam
-      name: dsh-purge/redteam
+      name: dsh-purge-fix/redteam
       disabled: true
 
     - id: dsh-purge-redteam-store
-      name: dsh-purge/redteam/store
+      name: dsh-purge-fix/redteam/store
       disabled: true
 
     - id: dsh-purge-redteam-ui
-      name: dsh-purge/redteam/ui
+      name: dsh-purge-fix/redteam/ui
       disabled: true

@@ -85,13 +85,29 @@ check('patch: 无重复 id', () => {
   return `${ids.length} unique ids`
 })
 
-check('package.json: 版本 1.1.9 / 仓库指向 Alanine-gH', () => {
+check('package.json: 包名 dsh-purge-fix / 版本 1.1.9 / 仓库指向 Alanine-gH', () => {
   const pkg = JSON.parse(read('package.json'))
+  assert(pkg.name === 'dsh-purge-fix', `name=${pkg.name}`)
   assert(pkg.version === '1.1.9', `version=${pkg.version}`)
   assert(!read('package.json').includes('ZXEB/dsh-purge'), '仍指向已失效的 ZXEB 仓库')
   assert(String(pkg.repository?.url).includes('Alanine-gH/dsh-purge'), 'repository 不对')
   assert(String(pkg.dsh?.install?.tarball).includes('Alanine-gH/dsh-purge'), 'tarball 不对')
   return `${pkg.name}@${pkg.version}`
+})
+
+check('所有包解析点统一使用 dsh-purge-fix（Cordis / 客户端 / 预设）', () => {
+  const names = [...patchCode.matchAll(/^\s*name:\s*'?([^'\s]+)'?\s*$/gm)].map((m) => m[1])
+  const own = names.filter((n) => n.startsWith('dsh-purge'))
+  assert(own.length === 4, `patch 里的自有插件行应为 4 条，实际 ${own.length}: ${own.join(', ')}`)
+  assert(own.every((n) => n === 'dsh-purge-fix' || n.startsWith('dsh-purge-fix/')),
+    `patch 仍引用旧包名: ${own.join(', ')}`)
+  const client = read('client.js')
+  assert(client.includes('id: "dsh-purge-fix"'), '客户端工厂 id 未同步改名')
+  assert(/const name = "dsh-purge-fix"/.test(client), '客户端导出的插件名未同步改名')
+  assert(client.includes('exports.name = name'), '客户端未导出插件名')
+  assert(read('presets/redteam/agent.cordis.yml').includes('name: dsh-purge-fix/redteam/tools'),
+    '演练台预设仍引用旧包名')
+  return own.join(', ')
 })
 
 check('release-notes.md 首行 = # 1.1.9（CI 发布前置条件）', () => {

@@ -2,9 +2,13 @@
   <img src="docs/banner.svg" alt="dsh-purge" width="720">
 </p>
 
-<h1 align="center">⚔️ dsh-purge — DeepSeek Harness 清洗 / 红队评测插件</h1>
+<h1 align="center">⚔️ dsh-purge-fix — DeepSeek Harness 清洗 / 红队评测插件</h1>
 
-<p align="center"><strong>v1.1.9 · 安全默认版</strong></p>
+<p align="center"><strong>v1.1.9 · 安全默认版 · npm 包名 <code>dsh-purge-fix</code></strong></p>
+
+> 📦 **包名已改为 `dsh-purge-fix`**：旧名 `dsh-purge` 在 npm 上由其他账号占用，无法发布。
+> GitHub 仓库仍是 `Alanine-gH/dsh-purge`；`$DSH_HOME` 状态目录、`/dsh-purge/*` HTTP 路由、
+> 提示词段名等**内部标识保持不变**，升级无需改这些位置。
 
 <p align="center">
   <em>完整源码取自原仓库 <code>YuJunZhiXue/dsh-purge</code> v1.1.71（原仓库已删），署名要求照旧。</em>
@@ -41,8 +45,8 @@
 > 并去掉 `dsh-purge-redteam*` 三行的 `disabled`，然后重启宿主。
 > **该模式与 dsh 0.2.2+ 不兼容，风险自负。**
 >
-> 本仓库地址是 <code>Alanine-gH/dsh-purge</code>；npm 上的 `dsh-purge` 已重新发布 1.1.9，
-> 可以直接 `dsh plugin add dsh-purge`，也可用下面的 tarball / 本地目录 / 手动方式。
+> 本仓库地址是 <code>Alanine-gH/dsh-purge</code>；npm 上的 `dsh-purge-fix` 已重新发布 1.1.9，
+> 可以直接 `dsh plugin add dsh-purge-fix`，也可用下面的 tarball / 本地目录 / 手动方式。
 
 ---
 
@@ -99,23 +103,23 @@
 
 ### 如何启用完整能力（会修改宿主，风险自负）
 
-编辑 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，在 `dsh-purge` 的 insert 配置里：
+编辑 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，在 `dsh-purge-fix` 的 insert 配置里：
 
 ```yaml
 - insert:
     - id: dsh-purge
-      name: 'dsh-purge'
+      name: 'dsh-purge-fix'
       inject: [systemPrompt, tools]
       config:
         safeMode: false          # 关闭安全默认
         autoApplyOnStart: false  # 建议仍保持关，手动点「应用」
         injectEnabled: false     # 需要注入时再开
     - id: dsh-purge-redteam        # 去掉以下三行的 disabled
-      name: dsh-purge/redteam
+      name: dsh-purge-fix/redteam
     - id: dsh-purge-redteam-store
-      name: dsh-purge/redteam/store
+      name: dsh-purge-fix/redteam/store
     - id: dsh-purge-redteam-ui
-      name: dsh-purge/redteam/ui
+      name: dsh-purge-fix/redteam/ui
 ```
 
 然后**完全退出并重启宿主**，进「清洗 → 应用」。注意：完整模式是就地改写本机 dsh 安装文件，
@@ -134,7 +138,7 @@
 
 ## 一、这是什么
 
-`dsh-purge` 是给**本机已安装的官方 DeepSeek Harness** 用的红队 / 鲁棒性评测插件。它不改模型，改的是**宿主层**：Harness 在运行时重写提示词、审批闸门、沙箱策略、会话迁移，所以「模型不答」很多时候不是模型拒绝，而是宿主层拦住了。这个插件把这两层分开，让你在自己的安装上做受控评测。
+`dsh-purge-fix` 是给**本机已安装的官方 DeepSeek Harness** 用的红队 / 鲁棒性评测插件。它不改模型，改的是**宿主层**：Harness 在运行时重写提示词、审批闸门、沙箱策略、会话迁移，所以「模型不答」很多时候不是模型拒绝，而是宿主层拦住了。这个插件把这两层分开，让你在自己的安装上做受控评测。
 
 | 你会得到 | 作用 |
 |---|---|
@@ -227,10 +231,10 @@ macOS / Linux 同一条命令。
 装完 profile 的 `package.json` 里会多出一条依赖：
 
 ```json
-"dsh-purge": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
+"dsh-purge-fix": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
 ```
 
-同时在 `dsh.profile.bundles` 末尾自动登记 `dsh-purge`。**两条都在 = 装对了。**
+同时在 `dsh.profile.bundles` 末尾自动登记 `dsh-purge-fix`。**两条都在 = 装对了。**
 
 > 仓库已把 `package.json` 的 `repository / homepage / bugs / dsh.install` 全部指向 `Alanine-gH/dsh-purge`，所以「检查更新」与面板里的仓库链接都走本仓库，不会再打原来的死链。
 
@@ -263,36 +267,36 @@ dsh plugin --profile web add .
 
 只改**正在用的那个宿主**对应的 profile，不要动另一个，也不要删原有 bundle。
 
-**第 1 步：把插件放进 `$DSH_HOME/plugins/dsh-purge`**
+**第 1 步：把插件放进 `$DSH_HOME/plugins/dsh-purge-fix`**
 
-目录名必须是 `dsh-purge`，里面 `package.json` 的 `"name"` 也必须是 `dsh-purge`。
+目录名必须是 `dsh-purge-fix`，里面 `package.json` 的 `"name"` 也必须是 `dsh-purge-fix`。
 
 ```sh
-git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
+git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge-fix"
 ```
 
-没有 git 就下载 [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz)，解压后把 `dsh-purge-master` 改名成 `dsh-purge`，整夹放进 `plugins/`。
+没有 git 就下载 [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz)，解压后把 `dsh-purge-master` 改名成 `dsh-purge-fix`，整夹放进 `plugins/`。
 
 **第 2 步：备份并修改 profile 的 `package.json`**
 
 Web → `$DSH_HOME/profiles/web/package.json`；桌面 → `$DSH_HOME/profiles/desktop/package.json`。**只追加两处**：
 
-1. `dependencies` 增加 `"dsh-purge": "file:../../plugins/dsh-purge"`
-2. `dsh.profile.bundles` **末尾**追加 `"dsh-purge"`（已有就别重复加）
+1. `dependencies` 增加 `"dsh-purge-fix": "file:../../plugins/dsh-purge-fix"`
+2. `dsh.profile.bundles` **末尾**追加 `"dsh-purge-fix"`（已有就别重复加）
 
 ```json
 {
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "dsh-purge": "file:../../plugins/dsh-purge"
+    "dsh-purge-fix": "file:../../plugins/dsh-purge-fix"
   },
   "dsh": {
     "profile": {
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        "dsh-purge"
+        "dsh-purge-fix"
       ]
     }
   }
@@ -308,7 +312,7 @@ cd "$DSH_HOME/profiles/web"    # 或 profiles/desktop
 pnpm install
 ```
 
-成功标志：出现 `profiles/<web|desktop>/node_modules/dsh-purge/package.json`。报 `Could not resolve` 就查 `file:` 路径；JSON 解析失败就修逗号或还原备份。
+成功标志：出现 `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json`。报 `Could not resolve` 就查 `file:` 路径；JSON 解析失败就修逗号或还原备份。
 
 **第 4 步**：见 [4.6](#46-安装后的三步不做等于没装)。
 
@@ -360,8 +364,8 @@ flowchart LR
 
 ### 4.7 安装验证清单
 
-- [ ] `profiles/<web|desktop>/package.json` 里同时有 `dependencies.dsh-purge` 和 `dsh.profile.bundles` 里的 `dsh-purge`
-- [ ] `profiles/<web|desktop>/node_modules/dsh-purge/package.json` 存在
+- [ ] `profiles/<web|desktop>/package.json` 里同时有 `dependencies.dsh-purge-fix` 和 `dsh.profile.bundles` 里的 `dsh-purge-fix`
+- [ ] `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json` 存在
 - [ ] 宿主界面会话标题旁出现 **dsh-purge** 按钮，右侧栏能打开
 - [ ] 聊天里 `/purge status` 打印 `DSH_HOME` 与补丁列表，且路径是你实际在跑的那份
 - [ ] 模型侧有 `purge_status` / `purge_apply` / `purge_revert` 三个工具（说明 bundle 已加载）
@@ -383,7 +387,7 @@ flowchart LR
 | `lib/` | 补丁引擎、路径探测、shim 注入、更新、卸载、演练台（`lib/redteam/`） |
 | `lib/asset-table.js` | 内置加密提示词（由 `scripts/embed-default-prompt.mjs` 生成） |
 | `client.js` | 右侧栏前端产物（构建自 `scripts/build-client.mjs`） |
-| `cordis.patch.yml` | bundle patch：注册 `dsh-purge`、`dsh-purge/redteam`、`store`、`ui` 四个入口 |
+| `cordis.patch.yml` | bundle patch：注册 `dsh-purge-fix`、`dsh-purge-fix/redteam`、`store`、`ui` 四个入口 |
 | `presets/redteam/` | 红队预设（`agent.cordis.yml`、`anchor-gate.mjs`、`preset.yml`） |
 | `skills/redteam/` | 随包技能（侦察、扫描、隧道、口令、横向、报告等） |
 | `docs/` | banner、预览图、演练授权声明页、上游许可与披露文件、`docs/upstream/` 原版 README |
@@ -435,12 +439,12 @@ purge_status   purge_apply   purge_revert
 
 ## 七、配置项
 
-改 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml` 里的 `dsh-purge` 条目，**重启宿主**生效。仓库自带默认值：
+改 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml` 里的 `dsh-purge-fix` 条目，**重启宿主**生效。仓库自带默认值：
 
 ```yaml
 - insert:
     - id: dsh-purge
-      name: 'dsh-purge'
+      name: 'dsh-purge-fix'
       inject: [systemPrompt, tools]
       config:
         enabled: true                 # 插件总开关
@@ -463,13 +467,13 @@ purge_status   purge_apply   purge_revert
         injectEnabled: false          # 提示词注入默认关闭
     # 演练台 1.1.9 默认停用：不往 $DSH_HOME/.agent-presets 落悬空预设
     - id: dsh-purge-redteam
-      name: dsh-purge/redteam
+      name: dsh-purge-fix/redteam
       disabled: true
     - id: dsh-purge-redteam-store
-      name: dsh-purge/redteam/store
+      name: dsh-purge-fix/redteam/store
       disabled: true
     - id: dsh-purge-redteam-ui
-      name: dsh-purge/redteam/ui
+      name: dsh-purge-fix/redteam/ui
       disabled: true
 ```
 
@@ -534,7 +538,7 @@ dsh-purge --uninstall     # 或 /purge uninstall，或面板「清洗 → 卸载
 
 ## 十、常见问题（FAQ）
 
-**1. `dsh plugin add dsh-purge` 报 404 / 装不动**
+**1. `dsh plugin add dsh-purge-fix` 报 404 / 装不动**
 原 npm 包已下架。改用 [方式 A](#41-方式-a从本仓库-tarball-一键安装推荐) 的 tarball 地址，或 [方式 B](#42-方式-b本地目录安装离线可用) / [方式 C](#43-方式-c手动安装cli-装不上时兜底)。
 
 **2. `dsh plugin` 报 `pnpm was not found`**
@@ -547,7 +551,7 @@ dsh-purge --uninstall     # 或 /purge uninstall，或面板「清洗 → 卸载
 本包 `dshTarget` 是 `0.2.0-rc.2`。确认 dsh 是 0.2.x；确实要冒险跨版本按提示执行：
 
 ```sh
-dsh plugin --profile web allow-version dsh-purge@1.1.9 --dsh-version <你的精确版本> --accept-risk
+dsh plugin --profile web allow-version dsh-purge-fix@1.1.9 --dsh-version <你的精确版本> --accept-risk
 ```
 
 **5. pnpm 提示 `allowBuilds`（git 依赖的 prepare 脚本被拦）**
@@ -559,7 +563,7 @@ dsh plugin --profile web allow-version dsh-purge@1.1.9 --dsh-version <你的精�
 **7. 装好了但会话标题旁没有 dsh-purge**
 - 装错宿主了（Web / 桌面各一份 `.dsh`，见 [4.0](#40-先确认你要装到哪个宿主)）；
 - 没重启宿主；
-- profile 里少了 `dsh.profile.bundles` 里的 `dsh-purge`（只加依赖不会加载）；
+- profile 里少了 `dsh.profile.bundles` 里的 `dsh-purge-fix`（只加依赖不会加载）；
 - `client.js` 没跟着拷过去（侧栏前端产物缺失）。
 
 **8. 点了「应用」但模型行为没变**

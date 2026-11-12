@@ -2,9 +2,11 @@
   <img src="docs/banner.svg" alt="dsh-purge" width="720">
 </p>
 
-<h1 align="center">⚔️ dsh-purge — DeepSeek Harness red-team / robustness plugin</h1>
+<h1 align="center">⚔️ dsh-purge-fix — DeepSeek Harness red-team / robustness plugin</h1>
 
-<p align="center"><strong>v1.1.9 · Safe by default</strong></p>
+<p align="center"><strong>v1.1.9 · Safe by default · npm name <code>dsh-purge-fix</code></strong></p>
+
+> 📦 **The npm package is now `dsh-purge-fix`**: the old name `dsh-purge` belongs to another npm account and cannot be published. The GitHub repository is still `Alanine-gH/dsh-purge`; the `$DSH_HOME` state directory, `/dsh-purge/*` HTTP routes and prompt section names are **unchanged internal identifiers** and need no edits when upgrading.
 
 <p align="center">
   <em>Full source extracted from <code>YuJunZhiXue/dsh-purge</code> v1.1.71 (the original repo is gone). Original attribution terms still apply.</em>
@@ -39,7 +41,7 @@
 > `dsh-purge.config.safeMode: false` in `cordis.patch.yml` and remove the `disabled`
 > flags on the `dsh-purge-redteam*` rows, then restart. **Not compatible with dsh 0.2.2+; use at your own risk.**
 >
-> `dsh-purge@1.1.9` is published on npm again, so `dsh plugin add dsh-purge` works;
+> `dsh-purge-fix@1.1.9` is published on npm again, so `dsh plugin add dsh-purge-fix` works;
 > tarball / local directory / manual routes below also work.
 
 ---
@@ -97,7 +99,7 @@ In safe mode only **read-only** surfaces are registered: `/purge status`, `/purg
 
 ## 1. What this is
 
-`dsh-purge` is a red-team / robustness evaluation plugin for the **official DeepSeek Harness already installed on your own machine**. It does not change the model; it changes the **host layer**. Harness rewrites prompts, approval gates, sandbox policy and session migration at runtime, so "the model won't answer" is often a host-layer block rather than a model refusal. This plugin separates the two layers on your own install so you can evaluate which default policy is too tight.
+`dsh-purge-fix` is a red-team / robustness evaluation plugin for the **official DeepSeek Harness already installed on your own machine**. It does not change the model; it changes the **host layer**. Harness rewrites prompts, approval gates, sandbox policy and session migration at runtime, so "the model won't answer" is often a host-layer block rather than a model refusal. This plugin separates the two layers on your own install so you can evaluate which default policy is too tight.
 
 | What you get | What it does |
 |---|---|
@@ -186,10 +188,10 @@ Same commands on macOS / Linux.
 Afterwards the profile `package.json` contains:
 
 ```json
-"dsh-purge": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
+"dsh-purge-fix": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
 ```
 
-and `dsh.profile.bundles` ends with `"dsh-purge"`. **Both present = installed correctly.**
+and `dsh.profile.bundles` ends with `"dsh-purge-fix"`. **Both present = installed correctly.**
 
 > `repository / homepage / bugs / dsh.install` in `package.json` all point at `Alanine-gH/dsh-purge`, so the in-panel "check for updates" and repo links use this repository instead of the dead one.
 
@@ -216,36 +218,36 @@ Copy the **whole tree** (`lib/ client.js docs/ presets/ skills/ bin/`). `client.
 
 Only touch the profile of the host you actually run.
 
-**Step 1 — put the plugin at `$DSH_HOME/plugins/dsh-purge`**
+**Step 1 — put the plugin at `$DSH_HOME/plugins/dsh-purge-fix`**
 
-The folder must be named `dsh-purge`, and `package.json` inside it must have `"name": "dsh-purge"`.
+The folder must be named `dsh-purge-fix`, and `package.json` inside it must have `"name": "dsh-purge-fix"`.
 
 ```sh
-git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge"
+git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge-fix"
 ```
 
-No git: download [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz), rename `dsh-purge-master` to `dsh-purge`, drop it into `plugins/`.
+No git: download [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz), rename `dsh-purge-master` to `dsh-purge-fix`, drop it into `plugins/`.
 
 **Step 2 — edit the profile `package.json` (back it up first)**
 
 Add exactly two things:
 
-1. `dependencies`: `"dsh-purge": "file:../../plugins/dsh-purge"`
-2. append `"dsh-purge"` to the **end** of `dsh.profile.bundles` (skip if already present)
+1. `dependencies`: `"dsh-purge-fix": "file:../../plugins/dsh-purge-fix"`
+2. append `"dsh-purge-fix"` to the **end** of `dsh.profile.bundles` (skip if already present)
 
 ```json
 {
   "name": "dsh-profile-web",
   "private": true,
   "dependencies": {
-    "dsh-purge": "file:../../plugins/dsh-purge"
+    "dsh-purge-fix": "file:../../plugins/dsh-purge-fix"
   },
   "dsh": {
     "profile": {
       "bundles": [
         "@deepseek-ai/dsh-base",
         "@deepseek-ai/dsh-web-app",
-        "dsh-purge"
+        "dsh-purge-fix"
       ]
     }
   }
@@ -261,7 +263,7 @@ cd "$DSH_HOME/profiles/web"    # or profiles/desktop
 pnpm install
 ```
 
-Success marker: `profiles/<web|desktop>/node_modules/dsh-purge/package.json` exists.
+Success marker: `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json` exists.
 
 **Step 4** — see [4.6](#46-the-three-steps-after-install).
 
@@ -308,8 +310,8 @@ flowchart LR
 
 ### 4.7 Verification checklist
 
-- [ ] profile `package.json` has both `dependencies.dsh-purge` and `dsh-purge` in `dsh.profile.bundles`
-- [ ] `profiles/<web|desktop>/node_modules/dsh-purge/package.json` exists
+- [ ] profile `package.json` has both `dependencies.dsh-purge-fix` and `dsh-purge-fix` in `dsh.profile.bundles`
+- [ ] `profiles/<web|desktop>/node_modules/dsh-purge-fix/package.json` exists
 - [ ] the **dsh-purge** dock button appears beside the session title and opens
 - [ ] `/purge status` prints `DSH_HOME` and the patch list, pointing at the host you actually run
 - [ ] the model sees `purge_status` / `purge_apply` / `purge_revert` tools
@@ -329,7 +331,7 @@ Optional packages that are missing show as `skipped` and do not block Apply.
 | `lib/` | patch engine, path discovery, shim injection, update, uninstall, drill console (`lib/redteam/`) |
 | `lib/asset-table.js` | embedded encrypted prompt (generated by `scripts/embed-default-prompt.mjs`) |
 | `client.js` | built dock front end (`scripts/build-client.mjs`) |
-| `cordis.patch.yml` | bundle patch registering `dsh-purge`, `dsh-purge/redteam`, `store`, `ui` |
+| `cordis.patch.yml` | bundle patch registering `dsh-purge-fix`, `dsh-purge/redteam`, `store`, `ui` |
 | `presets/redteam/` | red-team preset (`agent.cordis.yml`, `anchor-gate.mjs`, `preset.yml`) |
 | `skills/redteam/` | bundled skills (recon, scanning, tunnels, credentials, lateral, reporting) |
 | `docs/` | banner, previews, authorization page, upstream licenses, `docs/upstream/` original READMEs |
@@ -362,12 +364,12 @@ The **Clean** page lists patch status, prompt, own servers, rule sets and skills
 
 ## 7. Config keys
 
-Edit the `dsh-purge` entry in `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`, then restart the host.
+Edit the `dsh-purge-fix` entry in `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`, then restart the host.
 
 ```yaml
 - insert:
     - id: dsh-purge
-      name: 'dsh-purge'
+      name: 'dsh-purge-fix'
       inject: [systemPrompt, tools]
       config:
         enabled: true                 # master switch
@@ -390,13 +392,13 @@ Edit the `dsh-purge` entry in `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml
         injectEnabled: false          # prompt injection off by default
     # Drill console is disabled by default in 1.1.9 (no orphan preset is deployed).
     - id: dsh-purge-redteam
-      name: dsh-purge/redteam
+      name: dsh-purge-fix/redteam
       disabled: true
     - id: dsh-purge-redteam-store
-      name: dsh-purge/redteam/store
+      name: dsh-purge-fix/redteam/store
       disabled: true
     - id: dsh-purge-redteam-ui
-      name: dsh-purge/redteam/ui
+      name: dsh-purge-fix/redteam/ui
       disabled: true
 ```
 
@@ -432,13 +434,13 @@ Publishing a new version: bump `package.json`, put `# <version>` as the first li
 
 ## 10. FAQ
 
-1. **`add dsh-purge` returns 404** — the npm package is gone; use Route A/B/C.
+1. **`add dsh-purge-fix` returns 404** — the npm package is gone; use Route A/B/C.
 2. **`pnpm was not found`** — use dsh's bundled CLI (`resources\runtime\cli\bin\dsh.cmd`).
 3. **`plugin command failed`** — read the printed `logPath`; usually network, broken profile JSON, or a wrong `file:` path.
-4. **Version mismatch** — this package targets dsh `0.2.0-rc.2`. If you must cross versions: `dsh plugin --profile web allow-version dsh-purge@1.1.9 --dsh-version <exact> --accept-risk`.
+4. **Version mismatch** — this package targets dsh `0.2.0-rc.2`. If you must cross versions: `dsh plugin --profile web allow-version dsh-purge-fix@1.1.9 --dsh-version <exact> --accept-risk`.
 5. **`allowBuilds` prompt** — add the exact key pnpm prints to `profiles/<p>/pnpm-workspace.yaml`; tarball / local installs never trigger it.
 6. **Desktop profile errors out** — start the desktop client once, quit it fully, retry.
-7. **No dock button** — wrong host, host not restarted, missing `dsh-purge` in `dsh.profile.bundles`, or `client.js` not copied.
+7. **No dock button** — wrong host, host not restarted, missing `dsh-purge-fix` in `dsh.profile.bundles`, or `client.js` not copied.
 8. **Applied but nothing changed** — patches load after a restart, and injection enters a **new** session. Apply → let it restart → start a new chat.
 9. **Everything `pending` / `missing_file`** — the host was upgraded or moved; unmatched patches are skipped, never blindly rewritten.
 10. **`node_modules` overwritten** — set `autoApplyOnStart: true`, or click Apply again.

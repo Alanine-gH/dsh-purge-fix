@@ -1,5 +1,5 @@
 {
-  "name": "dsh-purge",
+  "name": "dsh-purge-fix",
   "version": "1.1.9",
   "description": "DeepSeek Harness 清洗 / 红队评测插件。v1.1.9 默认安全模式：启用插件不改动宿主任何文件，修复 0.2.2+ 启用即崩（unknown prompt variable {{cwd}} / ctx.agents.roots）。完整能力需显式关闭 safeMode。求 Star ⭐；如要二开请看署名要求。",
   "type": "module",
@@ -16,7 +16,7 @@
     "./package.json": "./package.json"
   },
   "bin": {
-    "dsh-purge": "bin/dsh-purge.js"
+    "dsh-purge-fix": "bin/dsh-purge.js"
   },
   "files": [
     "lib",
