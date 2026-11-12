@@ -45,8 +45,8 @@
 > 并去掉 `dsh-purge-redteam*` 三行的 `disabled`，然后重启宿主。
 > **该模式与 dsh 0.2.2+ 不兼容，风险自负。**
 >
-> 本仓库地址是 <code>Alanine-gH/dsh-purge</code>；npm 上的 `dsh-purge-fix` 已重新发布 1.1.9，
-> 可以直接 `dsh plugin add dsh-purge-fix`，也可用下面的 tarball / 本地目录 / 手动方式。
+> 本仓库地址是 <code>Alanine-gH/dsh-purge</code>；npm 包 `dsh-purge-fix` 的 1.1.9 已提交，但被 npm 自动审核标记为 Blocked（暂不可安装），
+> 目前请用下面的 GitHub tarball / 本地目录 / 手动方式安装；`dsh plugin add dsh-purge-fix` 需等 npm 审核通过。
 
 ---
 
