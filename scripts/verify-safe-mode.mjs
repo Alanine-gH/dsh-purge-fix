@@ -90,8 +90,8 @@ check('package.json: 包名 dsh-purge-fix / 版本 1.1.9 / 仓库指向 Alanine-
   assert(pkg.name === 'dsh-purge-fix', `name=${pkg.name}`)
   assert(pkg.version === '1.1.9', `version=${pkg.version}`)
   assert(!read('package.json').includes('ZXEB/dsh-purge'), '仍指向已失效的 ZXEB 仓库')
-  assert(String(pkg.repository?.url).includes('Alanine-gH/dsh-purge'), 'repository 不对')
-  assert(String(pkg.dsh?.install?.tarball).includes('Alanine-gH/dsh-purge'), 'tarball 不对')
+  assert(String(pkg.repository?.url).includes('Alanine-gH/dsh-purge-fix'), 'repository 不对')
+  assert(String(pkg.dsh?.install?.tarball).includes('Alanine-gH/dsh-purge-fix'), 'tarball 不对')
   return `${pkg.name}@${pkg.version}`
 })
 

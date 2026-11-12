@@ -1,7 +1,7 @@
 # 1.1.9
 
   **包名变更**：npm 包从 `dsh-purge` 改为 **`dsh-purge-fix`**（旧名由其他账号占用，无权发布）。
-  安装用 `dsh plugin add dsh-purge-fix`。GitHub 仓库仍为 `Alanine-gH/dsh-purge`，
+  安装用 `dsh plugin add dsh-purge-fix`。GitHub 仓库仍为 `Alanine-gH/dsh-purge-fix`，
   状态目录 / HTTP 路由 / 提示词段名等内部标识保持 `dsh-purge` 不变，升级不受影响。
 
 ## 中文
@@ -26,7 +26,7 @@
 
 - 默认 `safeMode: true`。此时 `apply()` 只注册只读的 `/purge status`、`purge_status` 工具与 `/dsh-purge/status` HTTP 端点，`DSH_HOME` 零写入，`apply()` 全程 try/catch 兜底，异常不会冒泡打断 Cordis 装配。
 - 需要完整（会修改宿主的）能力：在 profile 的 `cordis.patch.yml` 把 `dsh-purge.config.safeMode` 设为 `false`，并去掉 `dsh-purge-redteam*` 三行的 `disabled`，然后重启宿主。**该模式与 0.2.2+ 不兼容，风险自负。**
-- 仓库地址统一改为 `Alanine-gH/dsh-purge`（原先指向已失效的 `ZXEB/dsh-purge`，导致「检查更新」与 Release 都不工作）；`release.yml` 的仓库判定同步修正。
+- 仓库地址统一改为 `Alanine-gH/dsh-purge-fix`（原先指向已失效的 `ZXEB/dsh-purge`，导致「检查更新」与 Release 都不工作）；`release.yml` 的仓库判定同步修正。
 - 新增 `scripts/verify-safe-mode.mjs` 回归自检并接入 CI：静态校验 patch 不含 `system-prompt` 覆盖 / `{{cwd}}` 模板，动态用 mock ctx 断言启用后零写入、零全局钩子、不抛异常。
 
 ## English
@@ -43,7 +43,7 @@ creation — and could damage the dsh installation itself.
 - `injectEnabled: false`; safe mode writes nothing to `DSH_HOME` and registers no global event hooks, no permission pinning, no restart, no asar unpacking.
 - `apply()` is fully guarded, so plugin init errors can never bubble into Cordis assembly.
 - `lib/redteam/tools.js` no longer throws at import time when the host package cannot be resolved.
-- All repository links now point at `Alanine-gH/dsh-purge`.
+- All repository links now point at `Alanine-gH/dsh-purge-fix`.
 - `scripts/verify-safe-mode.mjs` added to CI as a regression guard.
 
 To opt into the full (host-modifying) behaviour, set `config.safeMode: false` and remove the `disabled` flags on the `dsh-purge-redteam*` rows, then restart. Not compatible with dsh 0.2.2+.

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   release:
-    if: github.repository == 'Alanine-gH/dsh-purge'
+    if: github.repository == 'Alanine-gH/dsh-purge-fix'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -60,4 +60,4 @@ jobs:
           fi
           test -s "$zip"
           gh release upload "$tag" "$zip" --clobber
-          echo "published https://github.com/Alanine-gH/dsh-purge/releases/tag/${tag}"
+          echo "published https://github.com/Alanine-gH/dsh-purge-fix/releases/tag/${tag}"

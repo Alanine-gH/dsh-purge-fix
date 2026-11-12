@@ -58,11 +58,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Alanine-gH/dsh-purge.git"
+    "url": "git+https://github.com/Alanine-gH/dsh-purge-fix.git"
   },
-  "homepage": "https://github.com/Alanine-gH/dsh-purge#readme",
+  "homepage": "https://github.com/Alanine-gH/dsh-purge-fix#readme",
   "bugs": {
-    "url": "https://github.com/Alanine-gH/dsh-purge/issues"
+    "url": "https://github.com/Alanine-gH/dsh-purge-fix/issues"
   },
   "dsh": {
     "bundle": {
@@ -80,9 +80,9 @@
     },
     "install": {
       "preferred": "tarball",
-      "tarball": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz",
-      "zip": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.zip",
-      "git": "https://github.com/Alanine-gH/dsh-purge.git"
+      "tarball": "https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz",
+      "zip": "https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.zip",
+      "git": "https://github.com/Alanine-gH/dsh-purge-fix.git"
     }
   },
   "publishConfig": {

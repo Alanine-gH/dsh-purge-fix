@@ -6,9 +6,9 @@
 
 <p align="center"><strong>v1.1.9 · 安全默认版 · npm 包名 <code>dsh-purge-fix</code></strong></p>
 
-> 📦 **包名已改为 `dsh-purge-fix`**：旧名 `dsh-purge` 在 npm 上由其他账号占用，无法发布。
-> GitHub 仓库仍是 `Alanine-gH/dsh-purge`；`$DSH_HOME` 状态目录、`/dsh-purge/*` HTTP 路由、
-> 提示词段名等**内部标识保持不变**，升级无需改这些位置。
+> 📦 仓库与 npm 包名现为 **`dsh-purge-fix`**（`Alanine-gH/dsh-purge-fix`）。
+> **第一次安装 / 从旧版升级，请先直接看文末的 [十三、最新版怎么用（v1.1.9）](#十三最新版怎么用v119)**；
+> 本次改了什么见 [附录、本次修改说明](#附录本次修改说明v119)。
 
 <p align="center">
   <em>完整源码取自原仓库 <code>YuJunZhiXue/dsh-purge</code> v1.1.71（原仓库已删），署名要求照旧。</em>
@@ -25,34 +25,13 @@
   <a href="README.md">中文</a> | <a href="README.en.md">English</a>
 </p>
 
-> ## ⚠️ v1.1.9 重要变更：默认安全模式
->
-> 旧版（1.8.0 及更早）**一启用插件就会让 dsh 宿主运行失败**：报
-> `unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`、
-> `ctx.agents.roots is not a function`、新建会话失败、历史对话读不出来，
-> 甚至会解包并改写 dsh 安装本体。原因是插件在组装前覆盖宿主的
-> `system-prompt` 配置、写带模板变量的 `personaSuffix`，并在启动时落预设 /
-> 挂全局钩子 / 重启宿主，与 dsh 0.2.2+ 不兼容。
->
-> **1.1.9 起默认 `safeMode: true`：安装 → 启用不会改动宿主任何文件。**
-> 插件只提供只读的 `/purge status`、`purge_status` 工具和状态端点；
-> 不写 `prompt-inject.md`、不落 `.agent-presets`、不解包 `app.asar`、
-> 不注入提示词、不改权限、不重启、不注册全局 event 钩子。
-> 详见 [安全模式](#安全模式-safe-mode) 一节。
->
-> 需要旧版那种「会修改宿主」的完整能力，必须**显式**把
-> `cordis.patch.yml` 里 `dsh-purge.config.safeMode` 设为 `false`，
-> 并去掉 `dsh-purge-redteam*` 三行的 `disabled`，然后重启宿主。
-> **该模式与 dsh 0.2.2+ 不兼容，风险自负。**
->
-> 本仓库地址是 <code>Alanine-gH/dsh-purge</code>；npm 包 `dsh-purge-fix` 的 1.1.9 已提交，但被 npm 自动审核标记为 Blocked（暂不可安装），
-> 目前请用下面的 GitHub tarball / 本地目录 / 手动方式安装；`dsh plugin add dsh-purge-fix` 需等 npm 审核通过。
+> ⚠️ **v1.1.9 是安全默认版**：安装 → 启用不会改动宿主任何文件，修复旧版一启用就让 dsh 运行失败的问题。
+> 新版用法见 [十三、最新版怎么用](#十三最新版怎么用v119)，改动明细见 [附录](#附录本次修改说明v119)。
 
 ---
 
 ## 目录
 
-- [〇、安全模式（Safe mode）](#安全模式-safe-mode)
 - [一、这是什么](#一这是什么)
 - [二、能力总览](#二能力总览)
 - [三、环境要求](#三环境要求)
@@ -73,64 +52,8 @@
 - [十、常见问题（FAQ）](#十常见问题faq)
 - [十一、兼容性](#十一兼容性)
 - [十二、声明、署名与许可](#十二声明署名与许可)
-
----
-
-<a id="安全模式-safe-mode"></a>
-
-## 〇、安全模式（Safe mode）
-
-**这是 1.1.9 的默认行为，也是本次修复的核心。** 之前用户反馈「只要安装并打开，dsh 就运行失败」，报
-`unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`、
-`ctx.agents.roots is not a function`、会话建不了 / 对话读不出来，甚至 dsh 安装本体被改坏。
-
-| 侵入点 | 旧版 | 1.1.9 安全模式 |
-|---|---|---|
-| `cordis.patch.yml` | `- id: system-prompt` 整体替换宿主配置，写 `personaSuffix` 含 `{{cwd}}` | **不再覆盖**宿主 `system-prompt`，交回宿主自己管 |
-| 演练台预设 | 启动时把 `.agent-presets/redteam/` 落到 `$DSH_HOME`，禁用后引用悬空 | 三行默认 `disabled`，四个入口安全模式下空转 |
-| 提示词注入 | 启动即写 `prompt-inject.md`，正文 `{foo}` 被当未注册变量 | `injectEnabled: false`，不写盘 |
-| 全局钩子 | 挂 `system-prompt/assemble`、`agent/pre-step`、`session/created` 并钉 `danger-full-access` | 不注册任何全局钩子 |
-| 宿主文件 | 解包 `app.asar`、改写宿主文件、注入 shim、自动重启 | 不触碰；`autoApplyOnStart: false` |
-| 模块加载 | `lib/redteam/tools.js` 在 import 阶段 throw，连累整个 bundle | 惰性解析，缺包降级不抛 |
-
-安全模式下插件只注册**只读**接口：
-
-- 聊天命令 `/purge status`、`/purge help`
-- 模型工具 `purge_status`
-- HTTP `GET /dsh-purge/status`（整条 `/dsh-purge` 前缀统一返回只读状态，写操作不执行）
-
-`apply()` 全程有 try/catch 兜底：即使宿主 API 不匹配，插件也只会降级为惰性，**不会把异常抛回 Cordis 装配流程**。仓库自带 `node scripts/verify-safe-mode.mjs` 回归自检（16 项），已接入 GitHub Actions。
-
-### 如何启用完整能力（会修改宿主，风险自负）
-
-编辑 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，在 `dsh-purge-fix` 的 insert 配置里：
-
-```yaml
-- insert:
-    - id: dsh-purge
-      name: 'dsh-purge-fix'
-      inject: [systemPrompt, tools]
-      config:
-        safeMode: false          # 关闭安全默认
-        autoApplyOnStart: false  # 建议仍保持关，手动点「应用」
-        injectEnabled: false     # 需要注入时再开
-    - id: dsh-purge-redteam        # 去掉以下三行的 disabled
-      name: dsh-purge-fix/redteam
-    - id: dsh-purge-redteam-store
-      name: dsh-purge-fix/redteam/store
-    - id: dsh-purge-redteam-ui
-      name: dsh-purge-fix/redteam/ui
-```
-
-然后**完全退出并重启宿主**，进「清洗 → 应用」。注意：完整模式是就地改写本机 dsh 安装文件，
-宿主升级（尤其 0.2.2+）后补丁针脚可能失配，这正是本次故障的来源；不确认就不要开。
-
-### 从旧版升级
-
-旧版可能已在 `$DSH_HOME` 留下 `prompt-inject.md`、`.agent-presets/redteam/`、`dsh-purge/`、
-`redteam/` 等状态目录，以及 `cordis.patch.yml` 里手写的 `- id: system-prompt` 覆盖段。
-装 1.1.9 前建议先退出宿主，删掉这些残留与旧的 `system-prompt` 覆盖，再安装；
-否则旧覆盖段仍会让宿主报 `unknown prompt variable`。
+- [十三、最新版怎么用（v1.1.9）](#十三最新版怎么用v119)
+- [附录、本次修改说明（v1.1.9）](#附录本次修改说明v119)
 
 ---
 
@@ -220,10 +143,10 @@ ls -d "${DSH_HOME:-$HOME/.dsh}"/profiles 2>/dev/null
 
 ```powershell
 # Web 宿主
-dsh plugin --profile web add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile web add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
 
 # 桌面宿主（先完全退出桌面客户端）
-dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
 ```
 
 macOS / Linux 同一条命令。
@@ -231,12 +154,12 @@ macOS / Linux 同一条命令。
 装完 profile 的 `package.json` 里会多出一条依赖：
 
 ```json
-"dsh-purge-fix": "https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz"
+"dsh-purge-fix": "https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz"
 ```
 
 同时在 `dsh.profile.bundles` 末尾自动登记 `dsh-purge-fix`。**两条都在 = 装对了。**
 
-> 仓库已把 `package.json` 的 `repository / homepage / bugs / dsh.install` 全部指向 `Alanine-gH/dsh-purge`，所以「检查更新」与面板里的仓库链接都走本仓库，不会再打原来的死链。
+> 仓库已把 `package.json` 的 `repository / homepage / bugs / dsh.install` 全部指向 `Alanine-gH/dsh-purge-fix`，所以「检查更新」与面板里的仓库链接都走本仓库，不会再打原来的死链。
 
 ---
 
@@ -272,10 +195,10 @@ dsh plugin --profile web add .
 目录名必须是 `dsh-purge-fix`，里面 `package.json` 的 `"name"` 也必须是 `dsh-purge-fix`。
 
 ```sh
-git clone https://github.com/Alanine-gH/dsh-purge.git "$DSH_HOME/plugins/dsh-purge-fix"
+git clone https://github.com/Alanine-gH/dsh-purge-fix.git "$DSH_HOME/plugins/dsh-purge-fix"
 ```
 
-没有 git 就下载 [master.tar.gz](https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz)，解压后把 `dsh-purge-master` 改名成 `dsh-purge-fix`，整夹放进 `plugins/`。
+没有 git 就下载 [master.tar.gz](https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz)，解压后把 `dsh-purge-fix-master` 改名成 `dsh-purge-fix`，整夹放进 `plugins/`。
 
 **第 2 步：备份并修改 profile 的 `package.json`**
 
@@ -509,11 +432,11 @@ flowchart TD
 
 ```powershell
 dsh plugin --profile desktop remove dsh-purge
-dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge/archive/refs/heads/master.tar.gz
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
 # 然后完全退出宿主 → 重开 → 清洗 → 应用
 ```
 
-面板里也有「更新 / 切换到正式版」，读的是本仓库（`package.json` 的 repository / homepage 已指向 `Alanine-gH/dsh-purge`）。发新版流程：改 `package.json` 版本号 → `release-notes.md` 首行写 `# <版本>` → 推 `master`，Actions 自动出 Release 与 zip。
+面板里也有「更新 / 切换到正式版」，读的是本仓库（`package.json` 的 repository / homepage 已指向 `Alanine-gH/dsh-purge-fix`）。发新版流程：改 `package.json` 版本号 → `release-notes.md` 首行写 `# <版本>` → 推 `master`，Actions 自动出 Release 与 zip。
 
 **还原**（保留插件，只回原版宿主）：
 
@@ -538,8 +461,11 @@ dsh-purge --uninstall     # 或 /purge uninstall，或面板「清洗 → 卸载
 
 ## 十、常见问题（FAQ）
 
-**1. `dsh plugin add dsh-purge-fix` 报 404 / 装不动**
-原 npm 包已下架。改用 [方式 A](#41-方式-a从本仓库-tarball-一键安装推荐) 的 tarball 地址，或 [方式 B](#42-方式-b本地目录安装离线可用) / [方式 C](#43-方式-c手动安装cli-装不上时兜底)。
+**1. `dsh plugin add dsh-purge-fix` 装不动 / 报 404**
+npm 上的 1.1.9 目前被自动审核标记 **Blocked**，尚未放行；这不是你装错了。
+改用 [方式 A](#41-方式-a从本仓库-tarball-一键安装推荐) 的 tarball 地址，
+或 [方式 B](#42-方式-b本地目录安装离线可用) / [方式 C](#43-方式-c手动安装cli-装不上时兜底)。
+详见 [十三、最新版怎么用](#十三最新版怎么用v119)。
 
 **2. `dsh plugin` 报 `pnpm was not found`**
 用 dsh 自带 CLI（`resources\runtime\cli\bin\dsh.cmd`），它会带内置 pnpm；自己装的话确保 pnpm 在 PATH。
@@ -603,7 +529,7 @@ dsh plugin --profile web allow-version dsh-purge-fix@1.1.9 --dsh-version <你的
 
 ## 十二、声明、署名与许可
 
-**署名要求（沿用原作者条款）**：借用本项目的名称、思路、代码或提示词，必须署名并写明来源。原始来源：**`YuJunZhiXue/dsh-purge`（作者：小杨）**；本仓库为该版本的镜像重建与 1.1.9 安全修复版：**`Alanine-gH/dsh-purge`**。去掉署名、隐去来源、据为己有会被追究。
+**署名要求（沿用原作者条款）**：借用本项目的名称、思路、代码或提示词，必须署名并写明来源。原始来源：**`YuJunZhiXue/dsh-purge`（作者：小杨）**；本仓库为该版本的镜像重建与 1.1.9 安全修复版：**`Alanine-gH/dsh-purge-fix`**。去掉署名、隐去来源、据为己有会被追究。
 
 **用途与边界**
 
@@ -620,3 +546,160 @@ dsh plugin --profile web allow-version dsh-purge-fix@1.1.9 --dsh-version <你的
 **许可**：MIT，见 [LICENSE](LICENSE)（版权行保留原作者 `Copyright (c) 2026 小杨`）。
 
 **致谢**：原作者 小杨（`YuJunZhiXue`）、[LINUX DO](https://linux.do) 社区，以及 `docs/redteam-upstream-*` 中列明的上游项目与披露文件。
+
+---
+
+<a id="十三最新版怎么用v119"></a>
+
+## 十三、最新版怎么用（v1.1.9）
+
+> 这一节是给「刚装 / 从旧版升级」的人看的，照着做就行。
+> 前面第 1～12 节是完整参考，遇到细节再回头查。
+
+### 13.0 先认清三个名字（别搞混）
+
+| 名字 | 现在是什么 | 会不会变 |
+|---|---|---|
+| GitHub 仓库 | `Alanine-gH/dsh-purge-fix` | 已改名，安装地址用这个 |
+| npm 包名 | `dsh-purge-fix` | **1.1.9 被 npm 自动审核标记 Blocked，当前装不了** |
+| 内部标识 | `$DSH_HOME/dsh-purge/` 状态目录、`/dsh-purge/*` HTTP 路由、提示词段名 `dsh-purge*` | **故意保持不变**，升级不用改 |
+
+⚠️ **现在不要用 `dsh plugin add dsh-purge-fix`**（npm 那边还没放行），请用下面的仓库 tarball 方式。
+旧名 `dsh-purge` 在 npm 上属于别人的账号，更不要用。
+
+### 13.1 从旧版升级：先清残留（这步别跳）
+
+旧版（1.8.0 及更早）会往你的 dsh 安装里写东西。**装新版前先完全退出宿主**，然后检查并删掉：
+
+- `$DSH_HOME` 下的 `prompt-inject.md`、`.agent-presets/redteam/`、`dsh-purge/`、`redteam/`
+- `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml` 里手写的 `- id: system-prompt` 覆盖段
+
+尤其最后一条：只要旧的 `system-prompt` 覆盖段还在，宿主照样报
+`unknown prompt variable "{{cwd}}"` —— 这是本次故障的根因，不是插件新版没修好。
+
+### 13.2 安装（推荐：仓库 tarball，一条命令）
+
+`dsh` 在 PATH 里就用这个；`web` / `desktop` 按你实际用的宿主二选一：
+
+```powershell
+# Web 宿主
+dsh plugin --profile web add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
+
+# 桌面宿主（先完全退出桌面客户端）
+dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/archive/refs/heads/master.tar.gz
+```
+
+装完**完全退出并重启宿主**。离线 / CLI 装不上时，用 [4.2 本地目录](#42-方式-b本地目录安装离线可用)
+或 [4.3 手动安装](#43-方式-c手动安装cli-装不上时兜底)，步骤见对应小节。
+
+判断装对了：profile 的 `package.json` 里同时有
+`"dsh-purge-fix": "..."` 依赖和 `dsh.profile.bundles` 里的 `"dsh-purge-fix"`。
+
+### 13.3 启用后先验证「宿主没被改」
+
+**1.1.9 默认 `safeMode: true`，启用插件不会改动宿主任何文件。** 重启后按这三条确认：
+
+1. 宿主正常启动、能新建会话、历史对话能读出来（旧版的崩溃现象消失）。
+2. 在聊天里输入 `/purge status`，会看到 `safeMode=ON` 和只读状态说明。
+3. 模型侧出现 `purge_status` 工具；浏览器访问 `GET /dsh-purge/status` 返回一段只读 JSON
+   （整条 `/dsh-purge` 前缀都只返回只读状态，写操作一律不执行）。
+
+想自己跑一遍证明：在仓库根目录执行 `npm test`（或 `node scripts/verify-safe-mode.mjs`），
+17 项检查会断言启用后零全局钩子、`DSH_HOME` 零写入、`apply()` 不抛异常。
+
+### 13.4 日常能用的（只读）
+
+| 入口 | 命令 / 路径 | 作用 |
+|---|---|---|
+| 聊天命令 | `/purge status` | 看版本、宿主、安全模式是否开启、补丁状态 |
+| 聊天命令 | `/purge help` | 列出可用命令 |
+| 模型工具 | `purge_status` | 同上，供模型在对话里查询 |
+| HTTP | `GET /dsh-purge/status` | 只读 JSON 状态端点 |
+
+**安全模式下就这些。** 不会自动写 `prompt-inject.md`、不落 `.agent-presets`、
+不解包 `app.asar`、不注入提示词、不改权限、不重启宿主、不注册全局 event 钩子。
+换句话说：这个版本装了之后是「安静」的，你可以放心先观察。
+
+### 13.5 我需要旧版那种完整能力吗？（会改宿主，风险自负）
+
+默认**不需要，也建议不要开**。完整模式是就地改写本机 dsh 安装文件，
+宿主升级（尤其 0.2.2+）后补丁针脚可能失配 —— 这正是把 dsh 本体弄坏的原因。
+
+确实要在自己机器上做受控评测时，编辑
+`$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，把 `dsh-purge-fix` 那行改成
+`safeMode: false`，并去掉 `dsh-purge-redteam*` 三行的 `disabled: true`，然后重启宿主。
+完整配置示例见 [附录](#附录本次修改说明v119) 或 [7、配置项](#七配置项)。
+**该模式与 dsh 0.2.2+ 不兼容，出问题请先备份 dsh 安装目录。**
+
+### 13.6 不用做的事 / 出问题时
+
+- **不用**手动改 `system-prompt`、不用写 `personaSuffix`、不用放 `.agent-presets/redteam/`。
+- **不要**同时装旧名 `dsh-purge` 和新名 `dsh-purge-fix`，两行 bundle 会撞。
+- 启动后如果又见 `unknown prompt variable` / `ctx.agents.roots is not a function`，
+  九成是 13.1 的残留没清干净，按那一节复查 `cordis.patch.yml`。
+- 还原 / 卸载走 [九、更新、还原、卸载](#九更新还原卸载)；不想要了直接禁用 bundle 即可，
+  安全模式没往宿主写任何东西，不会留下「悬空预设」。
+
+---
+
+<a id="附录本次修改说明v119"></a>
+
+## 附录、本次修改说明（v1.1.9）
+
+### A. 修了什么问题
+
+旧版「只要安装并打开，dsh 就运行失败」：报
+`unknown prompt variable "{{cwd}}" in section "deployment:persona-suffix"`（该段只注册
+`provider` / `model`）、`ctx.agents.roots is not a function`、新建会话失败、
+历史对话读不出来，甚至解包并改写 dsh 安装本体。根因与处置：
+
+| 侵入点 | 旧行为 | 1.1.9 安全模式 |
+|---|---|---|
+| `cordis.patch.yml` | `- id: system-prompt` 整体替换宿主配置并写 `personaSuffix: "Your working directory is {{cwd}}."` | **删除**，宿主 `system-prompt` 交回宿主自己管 |
+| 演练台预设 | `apply()` 把 `.agent-presets/redteam/` 落到 `$DSH_HOME`，禁用后引用悬空 | 三行默认 `disabled: true`，四个入口安全模式空转 |
+| 提示词注入 | 启动即写 `prompt-inject.md`，正文 `{foo}` 被当未注册变量 | `injectEnabled: false`，不写盘 |
+| 宿主钩子 | 挂 `system-prompt/assemble`、`agent/pre-step`、`session/created` 并钉 `danger-full-access` | 不注册任何全局钩子 |
+| 安装文件 | 解包 `app.asar`、改写宿主文件、注入 shim、自动重启 | `autoApplyOnStart: false`，不触碰 |
+| 模块加载 | `lib/redteam/tools.js` 在 import 阶段 throw，连累整个 bundle | 惰性解析，缺包降级不抛 |
+
+`apply()` 全程 try/catch 兜底：即使宿主 API 不匹配，也只降级为惰性，
+**不会把异常抛回 Cordis 装配流程**。
+
+### B. 完整模式配置示例（风险自负）
+
+```yaml
+- insert:
+    - id: dsh-purge
+      name: 'dsh-purge-fix'
+      inject: [systemPrompt, tools]
+      config:
+        safeMode: false          # 关闭安全默认
+        autoApplyOnStart: false  # 建议仍保持关，手动点「应用」
+        injectEnabled: false     # 需要注入时再开
+    - id: dsh-purge-redteam        # 去掉以下三行的 disabled
+      name: dsh-purge-fix/redteam
+    - id: dsh-purge-redteam-store
+      name: dsh-purge-fix/redteam/store
+    - id: dsh-purge-redteam-ui
+      name: dsh-purge-fix/redteam/ui
+```
+
+### C. 改名与发布状态
+
+- npm 包名 `dsh-purge` → **`dsh-purge-fix`**（旧名归其他账号，无权发布）；
+  所有 Cordis `name:` 解析点、客户端工厂 id、演练台预设、`update` / `uninstall` 的安装探测同步。
+  `update` / `uninstall` 保留新旧双名识别，便于清理历史安装。
+- GitHub 仓库改名为 **`Alanine-gH/dsh-purge-fix`**，`package.json` 的
+  `repository` / `homepage` / `bugs` / `dsh.install` 与 CI 判定同步更新。
+- **npm 发布暂停**：1.1.9 提交后 npm 返回 `202` 并建了 `0.0.0-stage` 占位版本，
+  随后网页显示 `Blocked: The version cannot be installed because it failed automated review`。
+  在审核通过前，安装一律走 [13.2 的仓库 tarball](#132-安装推荐仓库-tarball一条命令)。
+- 内部标识（状态目录、HTTP 路由、提示词段名、locale 命名空间）保持不变，升级无需改动。
+
+### D. 验证证据
+
+- `npm test` / `node scripts/verify-safe-mode.mjs`：**17/17 PASS**（源码树与 npm pack 解包产物各一次）。
+- 动态探针用 mock Cordis ctx 真实调用 `apply()`：不抛异常、无全局钩子、`DSH_HOME` 零写入、
+  只暴露只读命令 / 工具 / 路由、演练台四个入口空转。
+- 全部 `.js` / `.mjs` `node --check` 通过；4 个 YAML 解析通过；`npm pack` 108 个文件校验通过。
+
