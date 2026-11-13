@@ -1,5 +1,14 @@
 # 1.1.9
 
+## 追加修复（2026-11-13）：演练台 405 Method Not Allowed
+插件禁用 / 安全模式下打开「演练台」会显示红色 405。原因是演练台客户端是独立加载的
+浏览器模块，仍会 POST /redteam/api，而安全模式没有该路由。已修复：
+- 客户端 `api()` 拦截 404/405 并优雅降级，`Panel` 显示「演练台当前不可用」说明卡片；
+- 安全模式补 `exact /redteam/api` 只读端点（200 + drillUnavailable），不执行任何 op、不落盘；
+- 回归自检从 17 项扩到 21 项，源码树与 pack 解包产物各跑一次，均 21/21 PASS。
+
+以上改动均为只读，不改变「安装 → 启用不动宿主」的默认行为。
+
   **包名变更**：npm 包从 `dsh-purge` 改为 **`dsh-purge-fix`**（旧名由其他账号占用，无权发布）。
   安装用 `dsh plugin add dsh-purge-fix`。GitHub 仓库仍为 `Alanine-gH/dsh-purge-fix`，
   状态目录 / HTTP 路由 / 提示词段名等内部标识保持 `dsh-purge` 不变，升级不受影响。

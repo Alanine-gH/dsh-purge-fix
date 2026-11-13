@@ -710,8 +710,31 @@ dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/arc
 
 ### D. 验证证据
 
-- `npm test` / `node scripts/verify-safe-mode.mjs`：**17/17 PASS**（源码树与 npm pack 解包产物各一次）。
+- `npm test` / `node scripts/verify-safe-mode.mjs`：**21/21 PASS**（源码树与 npm pack 解包产物各一次）。
 - 动态探针用 mock Cordis ctx 真实调用 `apply()`：不抛异常、无全局钩子、`DSH_HOME` 零写入、
   只暴露只读命令 / 工具 / 路由、演练台四个入口空转。
 - 全部 `.js` / `.mjs` `node --check` 通过；4 个 YAML 解析通过；`npm pack` 108 个文件校验通过。
+
+### E. 追加修复：演练台 405 Method Not Allowed（2026-11-13）
+
+**现象**：插件已关闭 / 处于安全模式时，打开「演练台」页签会显示红色
+`405 Method Not Allowed`，各页签内容全空。
+
+**根因**：演练台客户端是独立加载的浏览器模块（`window.__ModuleLoader__`），
+与 host 插件是否启用解耦——即使插件被禁用，UI 仍会渲染并 `POST /redteam/api`。
+而 1.1.9 安全模式只注册了 `/dsh-purge` 只读前缀，没有覆盖 `/redteam/api`，
+宿主对该路径直接返回 405，客户端又把 HTTP 原文当成业务错误显示出来。
+
+**修复**（两端覆盖，均为只读、不改宿主）：
+
+| 位置 | 改动 |
+|---|---|
+| `lib/redteam/client.js` + `client.js`（源码与构建产物同步） | `api()` 拦截 404/405、识别 `drillUnavailable`、网络异常兜底；`Panel` 检测到后端离线时渲染「演练台当前不可用」说明卡片，不再显示 HTTP 原文 |
+| `lib/index.js` 安全模式 | 补一条 `exact /redteam/api` 只读端点，返回 `200 + { drillUnavailable:true, safeMode:true }`，不执行任何 op、不落盘、不探测 |
+| `scripts/verify-safe-mode.mjs` | 新增 4 项回归断言：两处客户端都含降级、源码与产物 `api()` 一致（防止 build 回退）、只读端点无写操作、动态探针真实调用该端点验证返回 200 而非 405 |
+
+注意：客户端降级是**关键**，因为插件禁用时 host 的 `apply()` 根本不运行，
+host 侧路由无法覆盖这个状态；host 路由是「启用但 safeMode」时的双保险。
+
+恢复完整演练台仍需显式设 `safeMode: false` 并重启宿主（见 13.5），默认行为不变。
 

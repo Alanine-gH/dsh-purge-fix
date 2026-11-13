@@ -134,6 +134,42 @@ check('源码: 无残留的 {{cwd}} 模板变量写入', () => {
   return 'no emitted {{cwd}} templates'
 })
 
+// 演练台 405 回归：客户端是独立加载的浏览器模块，插件禁用/安全模式下仍会
+// POST /redteam/api。客户端必须优雅降级，host 安全模式必须给只读应答。
+check('演练台: 源码与产物客户端都含 404/405 离线降级', () => {
+  for (const f of ['lib/redteam/client.js', 'client.js']) {
+    const body = read(f)
+    assert(/res\.status === 404 \|\| res\.status === 405/.test(body),
+      `${f} 未拦截 404/405，界面仍会显示 "405 Method Not Allowed"`)
+    assert(body.includes('drillUnavailable') && body.includes('drillOfflineUi'),
+      `${f} 缺少离线标记或说明卡片`)
+    assert(body.includes('markDrillOffline'), `${f} 缺少离线通知`)
+  }
+  return 'source + product both degrade'
+})
+
+check('演练台: 源码与产物 api() 实现一致（防止 build 回退）', () => {
+  const pick = (f) => {
+    const body = read(f)
+    const a = body.indexOf('const DRILL_OFFLINE_MSG')
+    const b = body.indexOf('let ui = {', a)
+    assert(a > 0 && b > a, `${f} 找不到 api() 边界`)
+    return body.slice(a, b).replace(/\r\n/g, '\n')
+  }
+  assert(pick('lib/redteam/client.js') === pick('client.js'),
+    '源码与产物 api() 不一致；重新 build-client.mjs 会回退修复')
+  return 'source/product in sync'
+})
+
+check('演练台: 安全模式注册 /redteam/api 只读端点', () => {
+  const body = read('lib/index.js')
+  assert(body.includes('path: "/redteam/api"'), '安全模式未注册 /redteam/api')
+  assert(body.includes('drillUnavailable: true'), '响应缺少只读标记')
+  const block = body.slice(body.indexOf('path: "/redteam/api"'), body.indexOf('path: "/redteam/api"') + 700)
+  assert(!/writeFile|mkdir|execFile|spawn|applyPatches/.test(block), '只读端点里出现了写操作')
+  return 'read-only bridge present'
+})
+
 // ── 动态：mock Cordis ctx，真实调用 apply() ──────────────────────────────────
 const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-purge-verify-'))
 const prevHome = process.env.DSH_HOME
@@ -180,6 +216,19 @@ let applyError = null
 try { mod.apply(ctx, {}) } catch (e) { applyError = String(e && e.stack || e) }
 const after = snap(tmpHome)
 
+// 演练台只读端点：真实调用 handler，确认返回 drillUnavailable 且不抛异常
+const drillRoute = reg.routes.find((r) => r.path === '/redteam/api')
+let drillResponse = null
+if (drillRoute) {
+  const captured = {}
+  const res = { writeHead(code, headers) { captured.code = code; captured.headers = headers }, end(body) { captured.body = body } }
+  const req = { method: 'POST', url: '/redteam/api', headers: {}, socket: { remoteAddress: '127.0.0.1' } }
+  try {
+    await drillRoute.handler(req, res)
+    drillResponse = { code: captured.code, body: captured.body ? JSON.parse(captured.body) : null }
+  } catch (e) { drillResponse = { error: String(e && e.message || e) } }
+}
+
 // 演练台四个入口在安全模式下必须全部空转
 const redteam = {}
 for (const f of ['index','store','ui','tools']) {
@@ -207,6 +256,7 @@ console.log(JSON.stringify({
   statusHasSafeMode: !!statusText && /safeMode=ON/.test(statusText.text || ''),
   toolHasSafeMode: !!toolText && /safeMode=ON/.test(toolText.text || ''),
   redteam,
+  drillResponse,
   injectError: reg.injectError || null,
 }))
 `
@@ -268,6 +318,16 @@ check('演练台 4 个入口在安全模式下全部空转且不抛错', () => {
   assert(errs.length === 0, `抛错: ${JSON.stringify(errs)}`)
   assert(probe.injectError === null, `inject 回调抛错: ${probe.injectError}`)
   return 'all inert'
+})
+
+check('演练台: /redteam/api 只读端点返回明确离线状态（不再是 405）', () => {
+  assert(probe.routes.includes('/redteam/api'), `routes=${probe.routes}`)
+  const r = probe.drillResponse
+  assert(r && !r.error, `handler 抛错: ${r && r.error}`)
+  assert(r.code === 200, `status=${r.code}（应为 200，避免界面显示 405）`)
+  assert(r.body && r.body.drillUnavailable === true && r.body.safeMode === true,
+    `响应缺少只读标记: ${JSON.stringify(r.body)}`)
+  return '200 + drillUnavailable, no host writes'
 })
 
 // ── 汇总 ─────────────────────────────────────────────────────────────────────

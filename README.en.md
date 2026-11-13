@@ -618,8 +618,34 @@ failed session creation, unreadable history, and even an unpacked/rewritten dsh 
 
 ### D. Verification evidence
 
-- `npm test` / `node scripts/verify-safe-mode.mjs`: **17/17 PASS** (source tree and unpacked npm tarball).
+- `npm test` / `node scripts/verify-safe-mode.mjs`: **21/21 PASS** (source tree and unpacked npm tarball).
 - Dynamic probe with a mock Cordis ctx calls the real `apply()`: no throw, no global hooks,
   zero `DSH_HOME` writes, read-only command/tool/route only, all four redteam entries inert.
 - All `.js` / `.mjs` pass `node --check`; 4 YAML files parse; `npm pack` validates 108 files.
+
+### E. Follow-up fix: drill console "405 Method Not Allowed" (2026-11-13)
+
+**Symptom**: with the plugin disabled or in safe mode, the Drill tab showed a red
+`405 Method Not Allowed` and every sub-tab was empty.
+
+**Cause**: the drill client is a separately loaded browser module
+(`window.__ModuleLoader__`), decoupled from whether the host plugin is enabled —
+it still renders and `POST`s to `/redteam/api` even when the plugin is off.
+Safe mode only registered the read-only `/dsh-purge` prefix, so the host returned
+405 for `/redteam/api` and the client displayed the raw HTTP text as an error.
+
+**Fix** (both sides, read-only, no host writes):
+
+| Where | Change |
+|---|---|
+| `lib/redteam/client.js` + `client.js` (source and built product kept in sync) | `api()` intercepts 404/405, recognises `drillUnavailable`, and handles network failures; `Panel` renders an "drill console unavailable" card instead of raw HTTP errors |
+| `lib/index.js` safe mode | Adds an `exact /redteam/api` read-only endpoint returning `200 + { drillUnavailable:true, safeMode:true }`; no op executed, no disk writes, no probing |
+| `scripts/verify-safe-mode.mjs` | 4 new regression checks: both clients degrade, source/product `api()` identical (prevents build rollback), endpoint has no write calls, dynamic probe verifies 200 instead of 405 |
+
+The client-side degradation is the essential part: when the plugin is disabled the
+host `apply()` never runs, so a host route cannot cover that state. The host route
+is a second guard for "enabled but safeMode".
+
+Restoring the full drill console still requires explicitly setting `safeMode: false`
+and restarting the host (see 13.5); defaults are unchanged.
 
