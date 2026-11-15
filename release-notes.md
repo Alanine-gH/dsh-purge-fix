@@ -18,6 +18,24 @@
 插件整体禁用时后端不加载（显示不可用卡片，这是正确状态）；完整红队能力仍需显式 `safeMode: false` 并重启宿主。
 以上改动均为只读，不改变「安装 → 启用不动宿主」的默认行为。
 
+## 追加修复（2026-11-15）：环境工具链 + 安全模式定位显示 + setup.sh
+
+- **Windows 工具箱补齐**：新增 `scripts/redteam-toolkit-windows.ps1`，把 TOOL_CATALOG 里有
+  Windows 官方构建的工具装到 `%USERPROFILE%\.dsh\redteam\toolkit`；实测 15/15 工具全部可解析。
+- **Defender 拦截处理**：本机 Defender 会删 fscan/gogo/chisel/ligolo/impacket 的 Windows 二进制，
+  改为在 Kali WSL 承载 + `scripts/redteam-wsl-shims.ps1` 生成 `.cmd` 转发 shim；
+  `TOOL_CATALOG.names` 支持 `.cmd`。不关闭、不排除 Defender。
+- **Kali 侧工具链**：用户态安装（无需 root）fscan/gogo/chisel/ligolo/suo5/ksubdomain/
+  subfinder/dnsx/httpx/naabu/nuclei/ffuf/frp/masscan/impacket。
+- **`setup.sh` 缺失**：安全模式现在也会把 `scripts/redteam-setup.sh` 落到 `$DSH_HOME/redteam/setup.sh`
+  （只写插件数据目录，不碰宿主）。
+- **「还没定位到本机 Harness」**：安全模式只读探测 `dsh_home`/`desktop_exe`/`desktop_install`/
+  `asar_still_sealed`（不解包 asar、不写文件），前端改为显示「已找到官方客户端，点应用解开」。
+- 回归自检扩到 **23 项**，全绿；23 个技能可用性检查全部 available。
+- 说明：`~/.dsh/prompt-inject.md` 不存在是正常现象 —— 只有完整模式「应用」才会生成，
+  安全模式从不写它（本次排查未读取其内容）。
+
+
   **包名变更**：npm 包从 `dsh-purge` 改为 **`dsh-purge-fix`**（旧名由其他账号占用，无权发布）。
   安装用 `dsh plugin add dsh-purge-fix`。GitHub 仓库仍为 `Alanine-gH/dsh-purge-fix`，
   状态目录 / HTTP 路由 / 提示词段名等内部标识保持 `dsh-purge` 不变，升级不受影响。

@@ -200,6 +200,21 @@ check('演练台: 安全模式提供只读 drill-grant（不再卡「未授权�
   return 'read-only drill-grant (granted, no disk write)'
 })
 
+check('安全模式状态: 只读探测 DSH_HOME / 官方客户端（不再显示「还没定位」）', () => {
+  const body = read('lib/index.js')
+  assert(body.includes('safeHostInfo'), 'index.js 缺少 safeHostInfo 只读探测')
+  assert(body.includes('findDesktopAppExecutable({ discover: true })'),
+    '未做官方客户端只读探测')
+  assert(body.includes('asar_still_sealed'), '状态缺少 asar_still_sealed 字段')
+  assert(body.includes('dsh_home: safeHostInfo.dshHome'), '状态未回填 dsh_home')
+  // 只读探测绝不能解包 asar / 写文件
+  const at = body.indexOf('const safeHostInfo')
+  const block = body.slice(at, at + 1400)
+  assert(!/extractAsar|openSealedDesktopHost|writeFile|mkdirSync/.test(block),
+    'safeHostInfo 里出现了写操作/解包操作')
+  return 'read-only host detection present'
+})
+
 // ── 动态：mock Cordis ctx，真实调用 apply() ──────────────────────────────────
 const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-purge-verify-'))
 const prevHome = process.env.DSH_HOME

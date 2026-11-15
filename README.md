@@ -748,3 +748,20 @@ dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/arc
 
 默认行为不变：安装 / 启用不会修改宿主；需要完整能力仍须显式关闭安全模式并重启。
 
+
+### F. 环境与工具链补齐（2026-11-15）
+
+- **Windows 工具箱**：`scripts/redteam-toolkit-windows.ps1` 一键把 TOOL_CATALOG 里有官方
+  Windows 构建的工具下载到 `%USERPROFILE%\.dsh\redteam\toolkit`（幂等、`-Only` 可选子集、
+  装完复查是否被 Defender 删除）。实测 `platformSummary()` **15/15 全找到**。
+- **Defender 拦截的怎么办**：本机 Defender 会删 fscan/gogo/chisel/ligolo/impacket 的
+  Windows 二进制（实测威胁记录），因此改用 Kali WSL 承载 + `scripts/redteam-wsl-shims.ps1`
+  生成 `.cmd` 转发 shim；`TOOL_CATALOG` 已支持 `.cmd` 候选。**不关闭、不排除 Defender。**
+- **Kali 侧**：用户态（无需 root）装到 `~/.dsh/redteam/toolkit`：fscan/gogo/chisel/ligolo/
+  suo5/ksubdomain/subfinder/dnsx/httpx/naabu/nuclei/ffuf/frp/masscan/impacket。
+- **`setup.sh` 缺失修复**：安全模式现在也会把 `scripts/redteam-setup.sh` 落到
+  `$DSH_HOME/redteam/setup.sh`（只写插件数据目录，不碰宿主）。
+- **「还没定位到本机 Harness」修复**：安全模式只读探测 `dsh_home` / `desktop_exe` /
+  `desktop_install` / `asar_still_sealed`，不解包 asar、不写文件；前端改为显示
+  「已找到官方客户端，点应用解开」。
+- 回归自检 **23/23 PASS**；23 个技能可用性 **23 available / 0 broken**。

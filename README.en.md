@@ -663,3 +663,22 @@ and would not open.
 Defaults unchanged: install / enable never modifies the host; full capability still requires
 explicitly disabling safe mode and restarting.
 
+
+### F. Environment and toolchain (2026-11-15)
+
+- **Windows toolkit**: `scripts/redteam-toolkit-windows.ps1` downloads every TOOL_CATALOG tool
+  that has an official Windows build into `%USERPROFILE%\.dsh\redteam\toolkit` (idempotent,
+  `-Only` subset, re-checks files after install because Defender may delete them).
+  `platformSummary()` reports **15/15 found**.
+- **Defender-blocked tools**: Defender deleted fscan/gogo/chisel/ligolo/impacket Windows binaries
+  on this machine, so they run inside Kali WSL and `scripts/redteam-wsl-shims.ps1` generates
+  `.cmd` forwarders; `TOOL_CATALOG` now accepts `.cmd` candidates. **Defender is not disabled
+  and no exclusion is added.**
+- **Kali side**: user-space install (no root) into `~/.dsh/redteam/toolkit`: fscan/gogo/chisel/
+  ligolo/suo5/ksubdomain/subfinder/dnsx/httpx/naabu/nuclei/ffuf/frp/masscan/impacket.
+- **Missing `setup.sh` fixed**: safe mode now also drops `scripts/redteam-setup.sh` into
+  `$DSH_HOME/redteam/setup.sh` (plugin data dir only, never the host).
+- **"Harness not located" fixed**: safe mode reports `dsh_home` / `desktop_exe` /
+  `desktop_install` / `asar_still_sealed` read-only (no asar unpack, no writes), so the UI shows
+  "official client found, click Apply to unpack" instead of "not located".
+- Regression: **23/23 PASS**; all 23 skills **available**.
