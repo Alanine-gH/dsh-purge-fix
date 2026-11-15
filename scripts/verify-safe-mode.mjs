@@ -67,15 +67,22 @@ check('patch: 默认 safeMode:true / injectEnabled:false / autoApplyOnStart:fals
   return 'safe defaults present'
 })
 
-check('patch: 演练台三行默认 disabled（不留悬空预设引用）', () => {
-  const ids = ['dsh-purge-redteam', 'dsh-purge-redteam-store', 'dsh-purge-redteam-ui']
-  for (const id of ids) {
+check('patch: 演练台自举行 disabled、store/ui 启用（安全模式只读可浏览）', () => {
+  const row = (id) => {
     const re = new RegExp(`- id:\\s*${id}\\b[\\s\\S]*?(?=\\n\\s*- id:|\\n\\s*$)`)
     const block = patchCode.match(re)
     assert(block, `找不到 ${id}`)
-    assert(/disabled:\s*true/.test(block[0]), `${id} 没有 disabled: true`)
+    return block[0]
   }
-  return 'all redteam rows disabled'
+  // 会碰宿主的自举行（落 .agent-presets）必须默认 disabled。
+  assert(/disabled:\s*true/.test(row('dsh-purge-redteam')),
+    'dsh-purge-redteam 应默认 disabled（它会落 .agent-presets 宿主文件）')
+  // store / ui 只读写插件私有目录 + 只读端点，默认启用，演练台可只读浏览。
+  assert(!/disabled:\s*true/.test(row('dsh-purge-redteam-store')),
+    'dsh-purge-redteam-store 不应 disabled（安全模式下仍需 provide 只读 store）')
+  assert(!/disabled:\s*true/.test(row('dsh-purge-redteam-ui')),
+    'dsh-purge-redteam-ui 不应 disabled（安全模式下仍注册只读 /redteam/api）')
+  return 'redteam row disabled; store/ui enabled'
 })
 
 check('patch: 无重复 id', () => {
@@ -161,13 +168,36 @@ check('演练台: 源码与产物 api() 实现一致（防止 build 回退）', 
   return 'source/product in sync'
 })
 
-check('演练台: 安全模式注册 /redteam/api 只读端点', () => {
+check('演练台: 安全模式在 ui.js 注册 /redteam/api 并带只读白名单闸', () => {
+  const body = read('lib/redteam/ui.js')
+  assert(body.includes("path: '/redteam/api'") || body.includes('path: "/redteam/api"'),
+    'ui.js 未注册 /redteam/api')
+  assert(body.includes('isSafeReadOnlyOp'), 'ui.js 缺少只读白名单校验')
+  assert(body.includes('readOnly: true'), '响应缺少只读标记')
+  // 只读闸必须在 op 分派之前拦截（出现在 handlePlatformOp/dispatchAsync 之前）
+  const gateAt = body.indexOf('isSafeReadOnlyOp(request.op)')
+  const dispatchAt = body.indexOf('dispatchAsync(store, request)')
+  assert(gateAt > 0 && dispatchAt > 0 && gateAt < dispatchAt,
+    '只读闸未在 op 分派之前生效')
+  // 白名单本身在 safe-mode.js
+  const mode = read('lib/safe-mode.js')
+  assert(mode.includes('SAFE_READONLY_OPS') && mode.includes('isSafeReadOnlyOp'),
+    'safe-mode.js 缺少只读 op 白名单')
+  assert(!/'(probeSessions|updateApply|savePrompt|platformConfigSave)'/.test(mode),
+    '白名单混入了写/探测 op')
+  return 'read-only bridge + whitelist present'
+})
+
+check('演练台: 安全模式提供只读 drill-grant（不再卡「未授权」）', () => {
   const body = read('lib/index.js')
-  assert(body.includes('path: "/redteam/api"'), '安全模式未注册 /redteam/api')
-  assert(body.includes('drillUnavailable: true'), '响应缺少只读标记')
-  const block = body.slice(body.indexOf('path: "/redteam/api"'), body.indexOf('path: "/redteam/api"') + 700)
-  assert(!/writeFile|mkdir|execFile|spawn|applyPatches/.test(block), '只读端点里出现了写操作')
-  return 'read-only bridge present'
+  assert(body.includes('"/dsh-purge/drill-grant"'), 'index.js 未注册只读 drill-grant 端点')
+  const at = body.indexOf('"/dsh-purge/drill-grant"')
+  const block = body.slice(at, at + 900)
+  assert(block.includes('granted: true') && block.includes('readOnly: true'),
+    'drill-grant 端点未返回只读授权')
+  assert(!/writeDrillGrant|writeFile|mkdir/.test(block),
+    'drill-grant 端点不应写盘（安全模式为纯内存只读授权）')
+  return 'read-only drill-grant (granted, no disk write)'
 })
 
 // ── 动态：mock Cordis ctx，真实调用 apply() ──────────────────────────────────
@@ -198,38 +228,28 @@ const mod = await import(pathToFileURL(path.join(ROOT, 'lib/index.js')).href)
 const reg = { commands: [], tools: [], events: [], effects: 0, injects: [], routes: [] }
 const webServer = { register(spec) { reg.routes.push(spec); return () => {} } }
 const logger = { info(){}, warn(){}, error(){} }
+const services = {}
 const ctx = {
   get(name) {
     if (name === 'commands') return { register: (s) => reg.commands.push(s) }
     if (name === 'tools') return { register: (s) => reg.tools.push(s) }
     if (name === 'webServer') return webServer
-    return undefined
+    return services[name]
   },
+  provide(name, value) { services[name] = value; Object.defineProperty(ctx, name, { value, configurable: true, enumerable: false }) },
   on(event, handler, opts) { reg.events.push({ event, opts }); return () => {} },
   effect(fn) { reg.effects += 1; try { fn() } catch {} return () => {} },
   inject(names, cb) { reg.injects.push(names); try { cb({ webServer, effect: ctx.effect, get: ctx.get }) } catch (e) { reg.injectError = String(e) } return () => {} },
   logger,
   systemPrompt: { section: () => () => {} },
   tools: { register: (s) => reg.tools.push(s) },
+  webServer,
 }
 let applyError = null
 try { mod.apply(ctx, {}) } catch (e) { applyError = String(e && e.stack || e) }
 const after = snap(tmpHome)
 
-// 演练台只读端点：真实调用 handler，确认返回 drillUnavailable 且不抛异常
-const drillRoute = reg.routes.find((r) => r.path === '/redteam/api')
-let drillResponse = null
-if (drillRoute) {
-  const captured = {}
-  const res = { writeHead(code, headers) { captured.code = code; captured.headers = headers }, end(body) { captured.body = body } }
-  const req = { method: 'POST', url: '/redteam/api', headers: {}, socket: { remoteAddress: '127.0.0.1' } }
-  try {
-    await drillRoute.handler(req, res)
-    drillResponse = { code: captured.code, body: captured.body ? JSON.parse(captured.body) : null }
-  } catch (e) { drillResponse = { error: String(e && e.message || e) } }
-}
-
-// 演练台四个入口在安全模式下必须全部空转
+// 演练台四个入口在安全模式下必须全部空转且不抛错
 const redteam = {}
 for (const f of ['index','store','ui','tools']) {
   const m = await import(pathToFileURL(path.join(ROOT, 'lib/redteam/'+f+'.js')).href)
@@ -237,6 +257,23 @@ for (const f of ['index','store','ui','tools']) {
   try { m.apply(ctx, {}) } catch (e) { err = String(e && e.message || e) }
   redteam[f] = err
 }
+
+// 演练台只读端点：真实调用 handler（ui.js 注册），验证只读白名单行为
+const drillRoute = reg.routes.find((r) => r.path === '/redteam/api')
+const callDrill = async (op) => {
+  if (!drillRoute) return null
+  const captured = {}
+  const res = { writeHead(code, headers) { captured.code = code; captured.headers = headers }, end(body) { captured.body = body } }
+  const payload = JSON.stringify(op === undefined ? {} : { op })
+  const req = { method: 'POST', url: '/redteam/api', headers: {}, socket: { remoteAddress: '127.0.0.1' }, on(ev, cb) { if (ev === 'data') cb(Buffer.from(payload)); if (ev === 'end') cb() } }
+  try {
+    await drillRoute.handler(req, res)
+    return { code: captured.code, body: captured.body ? JSON.parse(captured.body) : null }
+  } catch (e) { return { error: String(e && e.message || e) } }
+}
+const drillResponse = await callDrill('__nonexistent_write_op__')
+const drillRead = await callDrill('report')
+
 const after2 = snap(tmpHome)
 
 const status = reg.commands.find(c => c.name === 'purge')
@@ -257,6 +294,7 @@ console.log(JSON.stringify({
   toolHasSafeMode: !!toolText && /safeMode=ON/.test(toolText.text || ''),
   redteam,
   drillResponse,
+  drillRead,
   injectError: reg.injectError || null,
 }))
 `
@@ -292,11 +330,17 @@ check('apply(): 未注册 system-prompt/assemble 等全局钩子', () => {
   return `events=[${probe.events.join(',')}]`
 })
 
-check('apply(): DSH_HOME 零写入（不写 prompt-inject.md / .agent-presets / 备份）', () => {
+check('apply(): 不写宿主配置（prompt-inject.md / .agent-presets / 备份）', () => {
   const added = probe.filesAfter.filter((f) => !probe.filesBefore.includes(f))
-  // 允许插件内部日志写到 os.tmpdir() 之外；这里只校验 DSH_HOME
-  assert(added.length === 0, `DSH_HOME 新增文件: ${added.join(', ')}`)
-  return `${added.length} files written`
+  // 安全模式允许插件把只读演练台的 SQLite 写到自己的数据目录 $DSH_HOME/redteam/，
+  // 但绝不允许碰宿主配置：prompt-inject.md、.agent-presets、备份、settings 等。
+  const hostLeaks = added.filter((f) => {
+    const p = String(f).replace(/\\/g, '/')
+    if (p === 'redteam' || p.startsWith('redteam/')) return false // 插件私有数据目录，允许
+    return true
+  })
+  assert(hostLeaks.length === 0, `写了宿主文件: ${hostLeaks.join(', ')}`)
+  return `${added.length} files (plugin-private only)`
 })
 
 check('apply(): 只暴露只读命令 / 工具 / 状态路由', () => {
@@ -320,14 +364,19 @@ check('演练台 4 个入口在安全模式下全部空转且不抛错', () => {
   return 'all inert'
 })
 
-check('演练台: /redteam/api 只读端点返回明确离线状态（不再是 405）', () => {
+check('演练台: /redteam/api 安全模式返回只读拦截（写 op 拒绝、读 op 放行、不再 405）', () => {
   assert(probe.routes.includes('/redteam/api'), `routes=${probe.routes}`)
-  const r = probe.drillResponse
-  assert(r && !r.error, `handler 抛错: ${r && r.error}`)
-  assert(r.code === 200, `status=${r.code}（应为 200，避免界面显示 405）`)
-  assert(r.body && r.body.drillUnavailable === true && r.body.safeMode === true,
-    `响应缺少只读标记: ${JSON.stringify(r.body)}`)
-  return '200 + drillUnavailable, no host writes'
+  const w = probe.drillResponse
+  assert(w && !w.error, `写 op handler 抛错: ${w && w.error}`)
+  assert(w.code === 200, `status=${w.code}（应为 200，避免界面显示 405）`)
+  assert(w.body && w.body.safeMode === true && w.body.readOnly === true,
+    `写 op 未被只读拦截: ${JSON.stringify(w.body)}`)
+  assert(w.body.ok === false, `写 op 不应成功: ${JSON.stringify(w.body)}`)
+  const r = probe.drillRead
+  assert(r && !r.error, `读 op handler 抛错: ${r && r.error}`)
+  assert(r.code === 200 && r.body && r.body.safeMode !== true,
+    `读 op(report) 应放行到真实 store，实际: ${JSON.stringify(r && r.body)}`)
+  return 'write blocked (readOnly), read allowed, no 405'
 })
 
 // ── 汇总 ─────────────────────────────────────────────────────────────────────

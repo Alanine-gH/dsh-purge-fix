@@ -618,34 +618,48 @@ failed session creation, unreadable history, and even an unpacked/rewritten dsh 
 
 ### D. Verification evidence
 
-- `npm test` / `node scripts/verify-safe-mode.mjs`: **21/21 PASS** (source tree and unpacked npm tarball).
+- `npm test` / `node scripts/verify-safe-mode.mjs`: **22/22 PASS** (source tree and unpacked npm tarball).
 - Dynamic probe with a mock Cordis ctx calls the real `apply()`: no throw, no global hooks,
-  zero `DSH_HOME` writes, read-only command/tool/route only, all four redteam entries inert.
+  writes only to the plugin-private dir (never host config), read-only command/tool/route only,
+  all four redteam entries inert.
+- The dynamic probe also calls the real `/redteam/api` handler: a write op returns the `readOnly`
+  block, a read op (`report`) is passed to the real store, and 405 is never returned.
 - All `.js` / `.mjs` pass `node --check`; 4 YAML files parse; `npm pack` validates 108 files.
 
-### E. Follow-up fix: drill console "405 Method Not Allowed" (2026-11-13)
+### E. Follow-up fix: drill console unavailable when disabled / in safe mode (405 → read-only browsing, 2026-11-13)
 
-**Symptom**: with the plugin disabled or in safe mode, the Drill tab showed a red
-`405 Method Not Allowed` and every sub-tab was empty.
+**Symptom**: (1) with the plugin disabled or in safe mode, the Drill tab showed a red
+`405 Method Not Allowed`; (2) even once 405 was gone the tab still showed "Drill · Unauthorized"
+and would not open.
 
-**Cause**: the drill client is a separately loaded browser module
-(`window.__ModuleLoader__`), decoupled from whether the host plugin is enabled —
-it still renders and `POST`s to `/redteam/api` even when the plugin is off.
-Safe mode only registered the read-only `/dsh-purge` prefix, so the host returned
-405 for `/redteam/api` and the client displayed the raw HTTP text as an error.
+**Cause**:
+- The drill client is a separately loaded browser module (`window.__ModuleLoader__`), decoupled
+  from whether the host plugin is enabled — it still renders and `POST`s to `/redteam/api` even
+  when the plugin is off. Old safe mode only registered the read-only `/dsh-purge` prefix, so the
+  host returned 405 for `/redteam/api` and the client displayed the raw HTTP text as an error.
+- "Unauthorized" came from `readDrillAuth()`, which depends on `GET /dsh-purge/drill-grant`; that
+  endpoint used to be registered only in full mode, so safe mode never obtained a grant.
 
-**Fix** (both sides, read-only, no host writes):
+**Fix (safe mode = enabled without touching the host + read-only drill console)**:
 
 | Where | Change |
 |---|---|
-| `lib/redteam/client.js` + `client.js` (source and built product kept in sync) | `api()` intercepts 404/405, recognises `drillUnavailable`, and handles network failures; `Panel` renders an "drill console unavailable" card instead of raw HTTP errors |
-| `lib/index.js` safe mode | Adds an `exact /redteam/api` read-only endpoint returning `200 + { drillUnavailable:true, safeMode:true }`; no op executed, no disk writes, no probing |
-| `scripts/verify-safe-mode.mjs` | 4 new regression checks: both clients degrade, source/product `api()` identical (prevents build rollback), endpoint has no write calls, dynamic probe verifies 200 instead of 405 |
+| `lib/safe-mode.js` | Adds a `SAFE_READONLY_OPS` whitelist + `isSafeReadOnlyOp()` (query ops only — never write/probe/attack) |
+| `lib/redteam/store.js` | Safe mode still creates and `provide('redteam', store)` a read-only asset store (plugin-private `$DSH_HOME/redteam/`, never host files) |
+| `lib/redteam/ui.js` | Safe mode skips the pre-step gate hook but registers `exact /redteam/api`: whitelisted read queries pass; write/probe/attack ops are blocked with `{ ok:false, safeMode:true, readOnly:true }` |
+| `lib/index.js` safe mode | Adds a read-only `GET/POST /dsh-purge/drill-grant` endpoint (`{ granted:true, readOnly:true }`, in-memory, no disk writes) so the console opens instead of showing "Unauthorized" |
+| `cordis.patch.yml` | `dsh-purge-redteam` (the only row that drops `.agent-presets` / writes the skills dir) stays `disabled:true`; `-store`, `-ui` are enabled by default for read-only store + bridge |
+| `scripts/verify-safe-mode.mjs` | Regression expanded to **22 checks**: read-only gate precedes op dispatch, write blocked / read allowed, `/redteam/api` returns 200 not 405, drill-grant is read-only and writes nothing, source/product `api()` identical (prevents build rollback) |
 
-The client-side degradation is the essential part: when the plugin is disabled the
-host `apply()` never runs, so a host route cannot cover that state. The host route
-is a second guard for "enabled but safeMode".
+**Effect**:
+- **Safe mode (plugin enabled, no `safeMode:false`)**: the drill console opens and browses read-only
+  data (assets/sessions/findings/reports and other queries); any clean/write/probe/attack op is
+  blocked with a "safe mode (read-only)" message. The plugin writes no host files, unpacks no asar,
+  injects no prompts, changes no permissions.
+- **Plugin fully disabled**: the backend does not load at all; the drill console shows the
+  "currently unavailable" card (correct — nothing is running).
+- **Full mode (`safeMode: false` explicitly)**: restores all red-team capabilities (risky, see 13.5).
 
-Restoring the full drill console still requires explicitly setting `safeMode: false`
-and restarting the host (see 13.5); defaults are unchanged.
+Defaults unchanged: install / enable never modifies the host; full capability still requires
+explicitly disabling safe mode and restarting.
 

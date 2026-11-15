@@ -65,16 +65,20 @@
         # 提示词注入开关默认关闭；安全模式下即使打开也不会写盘。
         injectEnabled: false
 
-    # 演练台默认停用：不再往 $DSH_HOME/.agent-presets 落悬空预设。
-    # 需要演练台时：去掉以下三行的 disabled，并把 safeMode 设为 false，重启宿主。
+    # 演练台自举（redteam/index.js）默认停用：它是唯一会往 $DSH_HOME/.agent-presets
+    # 落预设、写 $DSH_HOME/redteam/skills 的行，属"会碰宿主"的部分，安全模式下
+    # 即使启用它 apply() 也会直接 return（不落预设）。
     - id: dsh-purge-redteam
       name: dsh-purge-fix/redteam
       disabled: true
 
+    # 资产库 store（redteam/store.js）：只读写插件私有目录 $DSH_HOME/redteam/*.sqlite，
+    # 不碰 dsh 本体。默认启用，让演练台在安全模式下可只读浏览真实数据。
     - id: dsh-purge-redteam-store
       name: dsh-purge-fix/redteam/store
-      disabled: true
 
+    # 演练台 HTTP 桥（redteam/ui.js）：安全模式下注册 /redteam/api 只读端点，
+    # 用白名单放行查询类 op、拦截写/探测/攻击类 op（见 lib/safe-mode.js）。
+    # 不装 pre-step 门禁钩子（那是全量模式行为）。默认启用，宿主零副作用。
     - id: dsh-purge-redteam-ui
       name: dsh-purge-fix/redteam/ui
-      disabled: true

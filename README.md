@@ -710,31 +710,41 @@ dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/arc
 
 ### D. 验证证据
 
-- `npm test` / `node scripts/verify-safe-mode.mjs`：**21/21 PASS**（源码树与 npm pack 解包产物各一次）。
-- 动态探针用 mock Cordis ctx 真实调用 `apply()`：不抛异常、无全局钩子、`DSH_HOME` 零写入、
+- `npm test` / `node scripts/verify-safe-mode.mjs`：**22/22 PASS**（源码树与 npm pack 解包产物各一次）。
+- 动态探针用 mock Cordis ctx 真实调用 `apply()`：不抛异常、无全局钩子、只写插件私有目录（不碰宿主配置）、
   只暴露只读命令 / 工具 / 路由、演练台四个入口空转。
+- 动态探针还真实调用 `/redteam/api` handler：写 op 返回 `readOnly` 拦截、读 op（`report`）放行到真实 store、
+  不再返回 405。
 - 全部 `.js` / `.mjs` `node --check` 通过；4 个 YAML 解析通过；`npm pack` 108 个文件校验通过。
 
-### E. 追加修复：演练台 405 Method Not Allowed（2026-11-13）
+### E. 追加修复：演练台在禁用/安全模式下不可用（405 → 只读可浏览，2026-11-13）
 
-**现象**：插件已关闭 / 处于安全模式时，打开「演练台」页签会显示红色
-`405 Method Not Allowed`，各页签内容全空。
+**现象**：①插件已关闭 / 处于安全模式时，打开「演练台」页签会显示红色 `405 Method Not Allowed`；
+②即使 405 消失，页签仍显示「演练台 · 未授权」，实际打不开。
 
-**根因**：演练台客户端是独立加载的浏览器模块（`window.__ModuleLoader__`），
-与 host 插件是否启用解耦——即使插件被禁用，UI 仍会渲染并 `POST /redteam/api`。
-而 1.1.9 安全模式只注册了 `/dsh-purge` 只读前缀，没有覆盖 `/redteam/api`，
-宿主对该路径直接返回 405，客户端又把 HTTP 原文当成业务错误显示出来。
+**根因**：
+- 演练台客户端是独立加载的浏览器模块（`window.__ModuleLoader__`），与 host 插件是否启用解耦——
+  即使插件被禁用，UI 仍会渲染并 `POST /redteam/api`。而旧的安全模式只注册了 `/dsh-purge` 只读前缀，
+  没覆盖 `/redteam/api`，宿主对该路径返回 405，客户端把 HTTP 原文当业务错误显示。
+- 「未授权」来自 `readDrillAuth()`：它依赖 `GET /dsh-purge/drill-grant`，而该端点原来只在完整模式注册，
+  安全模式下取不到授权 → 永远显示未授权。
 
-**修复**（两端覆盖，均为只读、不改宿主）：
+**修复（让安全模式 = 启用不碰宿主 + 演练台只读可浏览）**：
 
 | 位置 | 改动 |
 |---|---|
-| `lib/redteam/client.js` + `client.js`（源码与构建产物同步） | `api()` 拦截 404/405、识别 `drillUnavailable`、网络异常兜底；`Panel` 检测到后端离线时渲染「演练台当前不可用」说明卡片，不再显示 HTTP 原文 |
-| `lib/index.js` 安全模式 | 补一条 `exact /redteam/api` 只读端点，返回 `200 + { drillUnavailable:true, safeMode:true }`，不执行任何 op、不落盘、不探测 |
-| `scripts/verify-safe-mode.mjs` | 新增 4 项回归断言：两处客户端都含降级、源码与产物 `api()` 一致（防止 build 回退）、只读端点无写操作、动态探针真实调用该端点验证返回 200 而非 405 |
+| `lib/safe-mode.js` | 新增 `SAFE_READONLY_OPS` 只读 op 白名单 + `isSafeReadOnlyOp()`（只含查询类，绝不含写 / 探测 / 攻击 op） |
+| `lib/redteam/store.js` | 安全模式也创建并 `provide('redteam', store)` 只读资产库（只读写插件私有目录 `$DSH_HOME/redteam/`，不碰宿主） |
+| `lib/redteam/ui.js` | 安全模式跳过 pre-step 门禁钩子，但注册 `exact /redteam/api`：白名单放行只读查询，写 / 探测 / 攻击 op 一律拦截并回 `{ ok:false, safeMode:true, readOnly:true }`（不碰宿主、不改数据、不探测） |
+| `lib/index.js` 安全模式 | 补 `GET/POST /dsh-purge/drill-grant` **只读授权**端点（返回 `{ granted:true, readOnly:true }`，纯内存、不落盘），让演练台能打开，不再卡「未授权」 |
+| `cordis.patch.yml` | `dsh-purge-redteam`（唯一会落 `.agent-presets` / 写技能目录的行）保持 `disabled:true`；`-store`、`-ui` 默认启用，安全模式下提供只读资产库 + 只读 HTTP 桥 |
+| `scripts/verify-safe-mode.mjs` | 回归断言扩到 **22 项**：只读白名单闸在 op 分派之前、写 op 被拦截 / 读 op 放行、`/redteam/api` 返回 200 而非 405、drill-grant 只读授权不写盘、客户端源码与产物一致防 build 回退 |
 
-注意：客户端降级是**关键**，因为插件禁用时 host 的 `apply()` 根本不运行，
-host 侧路由无法覆盖这个状态；host 路由是「启用但 safeMode」时的双保险。
+**效果**：
+- **安全模式（启用插件、不传 `safeMode:false`）**：演练台可打开、可浏览只读数据（资产 / 会话 / 漏洞 / 报告等查询类）；
+  任何清洗、写入、探测、攻击类操作都会被拦截并提示「安全模式（只读）」。插件不写宿主、不解包 asar、不注入提示词、不改权限。
+- **插件整体禁用**：后端完全不会加载，演练台显示「当前不可用」说明卡片（这是正确状态——插件没开，当然没有后端）。
+- **完整模式（显式 `safeMode: false`）**：恢复全部红队能力（有风险，见 13.5）。
 
-恢复完整演练台仍需显式设 `safeMode: false` 并重启宿主（见 13.5），默认行为不变。
+默认行为不变：安装 / 启用不会修改宿主；需要完整能力仍须显式关闭安全模式并重启。
 
