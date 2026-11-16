@@ -4,7 +4,7 @@
 
 <h1 align="center">⚔️ dsh-purge-fix — DeepSeek Harness red-team / robustness plugin</h1>
 
-<p align="center"><strong>v1.1.9 · Safe by default · npm name <code>dsh-purge-fix</code></strong></p>
+<p align="center"><strong>v1.2.0 · Full mode by default · compatible with dsh 0.2.2-rc.3+ · npm name <code>dsh-purge-fix</code></strong></p>
 
 > 📦 The GitHub repo and npm package are now **`dsh-purge-fix`** (`Alanine-gH/dsh-purge-fix`).
 > **New install / upgrading from an old version: start with [13. Using the latest version (v1.1.9)](#13-using-the-latest-version-v119)** at the end of this file.
@@ -25,8 +25,9 @@
   <a href="README.md">中文</a> | <a href="README.en.md">English</a>
 </p>
 
-> ⚠️ **v1.1.9 is safe by default**: install → enable changes nothing on the host, fixing the old "enabling breaks dsh" crash.
-> See [13. Using the latest version](#13-using-the-latest-version-v119) for usage and the [Appendix](#appendix-what-changed-in-v119) for change details.
+> 🚀 **v1.2.0 (current source) defaults to full mode**: `safeMode: false`; enable the plugin, then click Apply.
+> Hardened for **dsh 0.2.2-rc.3 and later**: every startup hook is individually downgraded, and patches carry semantic compatibility fallbacks.
+> Set `config.safeMode` back to `true` for read-only browsing. The safe-mode sections below are the v1.1.9 history.
 
 ---
 
@@ -98,7 +99,7 @@ No hardcoded drive letters: it looks at `$DSH_HOME`, then `.dsh` next to the dsh
 
 | Item | Requirement |
 |---|---|
-| dsh | **0.2.x**; this package declares `dshTarget: 0.2.0-rc.2` (do not use 0.1.x) |
+| dsh | **0.2.2-rc.3 and later 0.2.x**; this package declares `dshTarget: 0.2.2-rc.3`; later 0.2.x is best-effort compatible (do not use 0.1.x) |
 | Host | official desktop EXE (profile `desktop`) or official `dsh web` (profile `web`) |
 | Node.js | **≥ 18**; Windows "no console flash" needs **≥ 22** |
 | Package manager | dsh's bundled pnpm (used by `dsh plugin`); nothing to install |
@@ -350,7 +351,7 @@ Edit the `dsh-purge-fix` entry in `$DSH_HOME/profiles/<web|desktop>/cordis.patch
       inject: [systemPrompt, tools]
       config:
         enabled: true                 # master switch
-        safeMode: true                # v1.1.9 default: read-only, enabling changes nothing. false enables host-modifying mode
+        safeMode: false               # v1.2.0 default: full mode. true means read-only (host untouched)
         autoApplyOnStart: false       # reapply patches on startup
         autoUpdateOnStart: false      # check for updates on startup
         autoRevertOnMissing: false    # reserved

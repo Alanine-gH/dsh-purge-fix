@@ -60,29 +60,27 @@ check('patch: 无可执行 {{cwd}} / personaSuffix 模板变量', () => {
   return 'no template variable injection'
 })
 
-check('patch: 默认 safeMode:true / injectEnabled:false / autoApplyOnStart:false', () => {
-  assert(/safeMode:\s*true/.test(patchCode), '缺少 safeMode: true')
+check('patch: 默认 safeMode:false（完整模式）/ injectEnabled:false / autoApplyOnStart:false', () => {
+  assert(/safeMode:\s*false/.test(patchCode), '缺少 safeMode: false（v1.2.0 默认完整模式）')
   assert(/injectEnabled:\s*false/.test(patchCode), '缺少 injectEnabled: false')
   assert(/autoApplyOnStart:\s*false/.test(patchCode), '缺少 autoApplyOnStart: false')
-  return 'safe defaults present'
+  return 'full mode default; boot auto-apply off'
 })
 
-check('patch: 演练台自举行 disabled、store/ui 启用（安全模式只读可浏览）', () => {
+check('patch: 演练台自举行、store、ui 默认启用（完整模式可用）', () => {
   const row = (id) => {
     const re = new RegExp(`- id:\\s*${id}\\b[\\s\\S]*?(?=\\n\\s*- id:|\\n\\s*$)`)
     const block = patchCode.match(re)
     assert(block, `找不到 ${id}`)
     return block[0]
   }
-  // 会碰宿主的自举行（落 .agent-presets）必须默认 disabled。
-  assert(/disabled:\s*true/.test(row('dsh-purge-redteam')),
-    'dsh-purge-redteam 应默认 disabled（它会落 .agent-presets 宿主文件）')
-  // store / ui 只读写插件私有目录 + 只读端点，默认启用，演练台可只读浏览。
+  assert(!/disabled:\s*true/.test(row('dsh-purge-redteam')),
+    'dsh-purge-redteam 应在完整模式默认启用（安全模式下 apply 会自动跳过）')
   assert(!/disabled:\s*true/.test(row('dsh-purge-redteam-store')),
-    'dsh-purge-redteam-store 不应 disabled（安全模式下仍需 provide 只读 store）')
+    'dsh-purge-redteam-store 不应 disabled')
   assert(!/disabled:\s*true/.test(row('dsh-purge-redteam-ui')),
-    'dsh-purge-redteam-ui 不应 disabled（安全模式下仍注册只读 /redteam/api）')
-  return 'redteam row disabled; store/ui enabled'
+    'dsh-purge-redteam-ui 不应 disabled')
+  return 'redteam/store/ui enabled by default'
 })
 
 check('patch: 无重复 id', () => {
@@ -271,7 +269,7 @@ const ctx = {
   webServer,
 }
 let applyError = null
-try { mod.apply(ctx, {}) } catch (e) { applyError = String(e && e.stack || e) }
+try { mod.apply(ctx, { safeMode: true }) } catch (e) { applyError = String(e && e.stack || e) }
 const after = snap(tmpHome)
 
 // 演练台四个入口在安全模式下必须全部空转且不抛错

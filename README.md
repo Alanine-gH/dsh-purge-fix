@@ -4,7 +4,7 @@
 
 <h1 align="center">⚔️ dsh-purge-fix — DeepSeek Harness 清洗 / 红队评测插件</h1>
 
-<p align="center"><strong>v1.1.9 · 安全默认版 · npm 包名 <code>dsh-purge-fix</code></strong></p>
+<p align="center"><strong>v1.2.0 · 完整模式默认 · 兼容 dsh 0.2.2-rc.3+ · npm 包名 <code>dsh-purge-fix</code></strong></p>
 
 > 📦 仓库与 npm 包名现为 **`dsh-purge-fix`**（`Alanine-gH/dsh-purge-fix`）。
 > **第一次安装 / 从旧版升级，请先直接看文末的 [十三、最新版怎么用（v1.1.9）](#十三最新版怎么用v119)**；
@@ -25,8 +25,11 @@
   <a href="README.md">中文</a> | <a href="README.en.md">English</a>
 </p>
 
-> ⚠️ **v1.1.9 是安全默认版**：安装 → 启用不会改动宿主任何文件，修复旧版一启用就让 dsh 运行失败的问题。
-> 新版用法见 [十三、最新版怎么用](#十三最新版怎么用v119)，改动明细见 [附录](#附录本次修改说明v119)。
+> 🚀 **v1.2.0（当前源码）默认完整模式**：`cordis.patch.yml` 的 `safeMode: false`，启用插件后点「应用」即可清洗。
+> 已按 **dsh 0.2.2-rc.3 及后续版本** 加固：启动钩子逐个降级（单个 API 变化不连坐 Apply / 宿主装配），
+> 补丁增加语义兼容兜底（常量改名、YAML 折叠变化仍能把免责声明与身份句换成强声明）。
+> 只想只读浏览时把 `config.safeMode` 改回 `true` 即可；下文「安全模式」章节是 v1.1.9 的历史说明。
+> 旧版安全默认说明见 [十三、最新版怎么用](#十三最新版怎么用v119) 与 [附录](#附录本次修改说明v119)。
 
 ---
 
@@ -98,7 +101,7 @@
 
 | 项 | 要求 |
 |---|---|
-| dsh | **0.2.x**（含 0.2.2-rc.2）；本包 `dshTarget` 仍写 `0.2.0-rc.2`，为该历史版本的声明值，0.1.x 不要用 |
+| dsh | **0.2.2-rc.3 及后续 0.2.x**（`dshTarget` 已声明 `0.2.2-rc.3`）；启动钩子与补丁对后续版本做尽力兼容，0.1.x 不要用 |
 | 宿主 | 官方桌面 EXE（profile `desktop`）或官方 `dsh web`（profile `web`） |
 | Node.js | **≥ 18**；Windows 下要「无闪窗」需要 **≥ 22** |
 | 包管理器 | 用 dsh 自带的 pnpm（`dsh plugin` 会调用它），不必单独装 |
@@ -383,7 +386,7 @@ purge_status   purge_apply   purge_revert
       inject: [systemPrompt, tools]
       config:
         enabled: true                 # 插件总开关
-        safeMode: true                # v1.1.9 默认：只读，启用不改宿主。false 才启用会改宿主的完整能力
+        safeMode: false               # v1.2.0 默认：完整模式。true 才是只读（不改宿主）
         autoApplyOnStart: false       # 启动时自动应用补丁（默认关；开了才每次启动自检重应用）
         autoUpdateOnStart: false      # 启动时检查更新
         autoRevertOnMissing: false    # 保留字段
@@ -632,16 +635,15 @@ dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/arc
 不解包 `app.asar`、不注入提示词、不改权限、不重启宿主、不注册全局 event 钩子。
 换句话说：这个版本装了之后是「安静」的，你可以放心先观察。
 
-### 13.5 我需要旧版那种完整能力吗？（会改宿主，风险自负）
+### 13.5 v1.2.0 的完整模式（当前默认）
 
-默认**不需要，也建议不要开**。完整模式是就地改写本机 dsh 安装文件，
-宿主升级（尤其 0.2.2+）后补丁针脚可能失配 —— 这正是把 dsh 本体弄坏的原因。
+v1.2.0 已把默认改为 `safeMode: false`。完整模式是就地改写本机 dsh 安装文件；
+为兼容 **0.2.2-rc.3 及后续版本**，启动钩子逐项 try/catch 降级，补丁增加语义兼容兜底：
+单个新版 API 变化只跳过那一项，不再让整个 Apply 或宿主装配崩溃；旧 pattern 命不中也不阻塞重启。
 
-确实要在自己机器上做受控评测时，编辑
-`$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，把 `dsh-purge-fix` 那行改成
-`safeMode: false`，并去掉 `dsh-purge-redteam*` 三行的 `disabled: true`，然后重启宿主。
-完整配置示例见 [附录](#附录本次修改说明v119) 或 [7、配置项](#七配置项)。
-**该模式与 dsh 0.2.2+ 不兼容，出问题请先备份 dsh 安装目录。**
+只想只读时，编辑 `$DSH_HOME/profiles/<web|desktop>/cordis.patch.yml`，把
+`safeMode` 改回 `true` 后重启。完整配置示例见 [7、配置项](#七配置项)。
+**首次在大版本升级后应用前，仍建议备份 dsh 安装目录。**
 
 ### 13.6 不用做的事 / 出问题时
 

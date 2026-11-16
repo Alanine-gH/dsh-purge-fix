@@ -1,7 +1,7 @@
 {
   "name": "dsh-purge-fix",
   "version": "1.1.9",
-  "description": "DeepSeek Harness 清洗 / 红队评测插件。v1.1.9 默认安全模式：启用插件不改动宿主任何文件，修复 0.2.2+ 启用即崩（unknown prompt variable {{cwd}} / ctx.agents.roots）。完整能力需显式关闭 safeMode。求 Star ⭐；如要二开请看署名要求。",
+  "description": "DeepSeek Harness 清洗 / 红队评测插件。默认完整模式，兼容 dsh 0.2.2-rc.3 及后续版本（启动钩子逐个降级 + 补丁语义兼容兜底）；安全模式保留为只读 opt-in。求 Star ⭐；如要二开请看署名要求。",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -38,7 +38,7 @@
   "scripts": {
     "embed-prompt": "node scripts/embed-default-prompt.mjs",
     "build:client": "node scripts/build-client.mjs",
-    "test": "node scripts/verify-safe-mode.mjs"
+    "test": "node scripts/verify-safe-mode.mjs && node scripts/verify-full-mode.mjs"
   },
   "license": "MIT",
   "keywords": [
@@ -94,5 +94,5 @@
   "engines": {
     "node": ">=18"
   },
-  "dshTarget": "0.2.0-rc.2"
+  "dshTarget": "0.2.2-rc.3"
 }

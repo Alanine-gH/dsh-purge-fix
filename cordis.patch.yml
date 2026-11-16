@@ -24,7 +24,7 @@
   name: dsh-redteam-mode/ui
   disabled: true
 
-# ── v1.1.9 安全默认 ───────────────────────────────────────────────────────────
+# ── v1.2.0 完整默认 ───────────────────────────────────────────────────────────
 # 旧版在这里用 `- id: system-prompt` 覆盖宿主 system-prompt 的 config，写入
 # personaSuffix: "Your working directory is {{cwd}}."。宿主 0.2.2+ 的
 # deployment:persona-suffix 段只注册 provider/model，{{cwd}} 会被判为
@@ -32,10 +32,8 @@
 # 「整体替换 config、不做深合并」，还会把宿主其余配置清空。两条一并删除，
 # 宿主 system-prompt 完全交回宿主自己管，插件不再在组装前碰它。
 #
-# 旧版还 insert 三个演练台服务，并在 apply() 里把 .agent-presets/redteam/
-# 落到 $DSH_HOME；预设引用 dsh-purge/redteam/tools，插件一禁用引用就悬空，
-# gateway 新建会话直接崩（ctx.agents.roots is not a function / 创建会话失败）。
-# 现在三行默认 disabled，且 lib/redteam/index.js 在安全模式下不落预设。
+# 旧版还把 .agent-presets/redteam/ 落到 $DSH_HOME；插件禁用后预设引用悬空。
+# 现在完整模式默认启用 redteam 自举，安全模式下 lib/redteam/index.js 自动跳过。
 
 - insert:
     - id: dsh-purge
@@ -43,10 +41,11 @@
       inject: [systemPrompt, tools]
       config:
         enabled: true
-        # 默认安全模式：apply() 只注册只读状态命令 / 工具 / HTTP 端点，
-        # 不写宿主文件、不解包 app.asar、不注入提示词、不改权限、不自动重启。
-        # 只有显式写成 false 才启用旧版会修改 dsh 安装文件的完整能力。
-        safeMode: true
+        # v1.2.0 默认完整模式：启用后按需点「应用」清洗宿主。宿主 0.2.2-rc.3+
+        # 的启动钩子已做逐项降级，补丁也加了语义兼容兜底（常量改名 / YAML 折叠
+        # 变化仍能命中）；单个新版 API 变化不会再连坐整个 Apply 或宿主装配。
+        # 需要只读浏览时显式改成 true。
+        safeMode: false
         autoApplyOnStart: false
         autoUpdateOnStart: false
         autoRevertOnMissing: false
@@ -65,12 +64,10 @@
         # 提示词注入开关默认关闭；安全模式下即使打开也不会写盘。
         injectEnabled: false
 
-    # 演练台自举（redteam/index.js）默认停用：它是唯一会往 $DSH_HOME/.agent-presets
-    # 落预设、写 $DSH_HOME/redteam/skills 的行，属"会碰宿主"的部分，安全模式下
-    # 即使启用它 apply() 也会直接 return（不落预设）。
+    # 演练台自举（redteam/index.js）：完整模式默认启用，落 .agent-presets/redteam
+    # 与技能目录；安全模式下 apply() 会直接 return，不写任何宿主内容。
     - id: dsh-purge-redteam
       name: dsh-purge-fix/redteam
-      disabled: true
 
     # 资产库 store（redteam/store.js）：只读写插件私有目录 $DSH_HOME/redteam/*.sqlite，
     # 不碰 dsh 本体。默认启用，让演练台在安全模式下可只读浏览真实数据。
