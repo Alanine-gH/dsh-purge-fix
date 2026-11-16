@@ -60,11 +60,14 @@ check('patch: 无可执行 {{cwd}} / personaSuffix 模板变量', () => {
   return 'no template variable injection'
 })
 
-check('patch: 默认 safeMode:false（完整模式）/ injectEnabled:false / autoApplyOnStart:false', () => {
+check('patch: 完整模式默认开启清洗 / 注入 / 能力协议 / hooks 放行', () => {
   assert(/safeMode:\s*false/.test(patchCode), '缺少 safeMode: false（v1.2.0 默认完整模式）')
-  assert(/injectEnabled:\s*false/.test(patchCode), '缺少 injectEnabled: false')
+  assert(/injectEnabled:\s*true/.test(patchCode), '缺少 injectEnabled: true（恢复原版默认注入）')
+  assert(/stripMnemon:\s*true/.test(patchCode), '缺少 stripMnemon: true')
+  assert(/capabilityProtocol:\s*true/.test(patchCode), '缺少 capabilityProtocol: true')
+  assert(/hooksDenyBypass:\s*true/.test(patchCode), '缺少 hooksDenyBypass: true')
   assert(/autoApplyOnStart:\s*false/.test(patchCode), '缺少 autoApplyOnStart: false')
-  return 'full mode default; boot auto-apply off'
+  return 'full mode + original feature toggles on'
 })
 
 check('patch: 演练台自举行、store、ui 默认启用（完整模式可用）', () => {

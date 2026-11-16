@@ -50,7 +50,7 @@
         autoUpdateOnStart: false
         autoRevertOnMissing: false
         injectOnce: false
-        stripMnemon: false
+        stripMnemon: true
         verbose: false
         postPrompt: ""
         postPromptOrder: 5100
@@ -59,10 +59,10 @@
         autoContinue: false
         continueMax: 3
         continueText: "继续"
-        capabilityProtocol: false
-        hooksDenyBypass: false
-        # 提示词注入开关默认关闭；安全模式下即使打开也不会写盘。
-        injectEnabled: false
+        capabilityProtocol: true
+        hooksDenyBypass: true
+        # 恢复原版默认：启用即注入 prompt-inject.md；不需要时在面板关闭。
+        injectEnabled: true
 
     # 演练台自举（redteam/index.js）：完整模式默认启用，落 .agent-presets/redteam
     # 与技能目录；安全模式下 apply() 会直接 return，不写任何宿主内容。

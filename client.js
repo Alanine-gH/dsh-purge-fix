@@ -455,7 +455,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge-fix", factory: (require) => {
 			"saved.hooksDeny": "已保存",
 			"injectSwitch.title": "提示词注入",
 			"injectSwitch.enable": "把 $DSH_HOME/prompt-inject.md 全文挂到每轮系统提示词头部",
-			"injectSwitch.hint": "默认关闭。关闭时人设回到 DSH 默认，不再读取该文件；打开后按原文全文注入。注入正文里的 {变量} 占位符会以纯文本处理，不会被当作模板变量解析。改完立刻生效，无需点「应用」。",
+			"injectSwitch.hint": "默认开启，恢复原版行为。关闭时人设回到 DSH 默认，不再读取该文件；打开后按原文全文注入。注入正文里的 {变量} 占位符会以纯文本处理，不会被当作模板变量解析。改完立刻生效，无需点「应用」。",
 			"injectSwitch.on": "已开启",
 			"injectSwitch.off": "已关闭",
 			"saved.injectSwitch": "已保存",
@@ -805,7 +805,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge-fix", factory: (require) => {
 			"saved.hooksDeny": "Saved",
 			"injectSwitch.title": "Prompt injection",
 			"injectSwitch.enable": "Hang the full $DSH_HOME/prompt-inject.md at the head of every system prompt",
-			"injectSwitch.hint": "Off by default. When off, the persona falls back to DSH defaults and the file is not read; when on, the full text is injected verbatim. Braced {placeholders} in the injected text are treated as plain text, never as template variables. Takes effect immediately, no Apply needed.",
+			"injectSwitch.hint": "On by default, matching the original plugin. When off, the persona falls back to DSH defaults and the file is not read; when on, the full text is injected verbatim. Braced {placeholders} in the injected text are treated as plain text, never as template variables. Takes effect immediately, no Apply needed.",
 			"injectSwitch.on": "On",
 			"injectSwitch.off": "Off",
 			"saved.injectSwitch": "Saved",
@@ -1261,7 +1261,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 			);
 		}
 
-		// v1.8.0：提示词注入开关。默认关闭，改动立即生效（服务端会刷新内存钉子）。
+		// 提示词注入开关。默认开启（原版行为），改动立即生效（服务端会刷新内存钉子）。
 		function InjectSwitchSection({ safeMode }) {
 			const t = useT();
 			const [on, setOn] = useState(false);

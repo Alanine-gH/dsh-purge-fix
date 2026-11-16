@@ -42,6 +42,16 @@ check('重启判定: desktop 换包前接受 agent-instructions 强声明兜底'
   return 'agent-instructions fallback'
 })
 
+check('0.2.2-rc.3 补丁锚点: 拆包文件键与 SandboxEscalationError', () => {
+  const code = read('lib/core.js')
+  for (const key of ['dsh-tools-pipeline', 'dsh-tools-types-pipeline', 'tool-executor-ptc', 'tool-executor-ptc-types', 'deliverables-prompt-refs']) {
+    assert(code.includes(`"${key}"`), `缺少文件键 ${key}`)
+  }
+  assert(code.includes('SandboxEscalationError'), '缺少 rc.3 升级错误类型锚点')
+  assert(code.includes('requirePresent(target, actor, "edit")'), '缺少 rc.3 读前校验锚点')
+  return 'rc.3 anchors + split package keys'
+})
+
 check('package.json: dshTarget 指向 0.2.2-rc.3', () => {
   const pkg = JSON.parse(read('package.json'))
   assert(String(pkg.dshTarget).includes('0.2.2'), `dshTarget=${pkg.dshTarget}`)
