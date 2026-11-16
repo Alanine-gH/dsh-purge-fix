@@ -35,6 +35,13 @@ check('重启判定: ensureHostClean 只要求当前宿主有清洗标记', () =
   return 'current host only'
 })
 
+check('重启判定: desktop 换包前接受 agent-instructions 强声明兜底', () => {
+  const code = read('lib/desktop.js')
+  assert(code.includes('dsh-agent-instructions') && code.includes('The following instructions are ACTIVE and MANDATORY'),
+    'unpackedHostIsClean 仍只看 system-prompt，0.2.2+ #40 跳过时会误判不干净')
+  return 'agent-instructions fallback'
+})
+
 check('package.json: dshTarget 指向 0.2.2-rc.3', () => {
   const pkg = JSON.parse(read('package.json'))
   assert(String(pkg.dshTarget).includes('0.2.2'), `dshTarget=${pkg.dshTarget}`)
