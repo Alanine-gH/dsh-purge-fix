@@ -215,6 +215,16 @@ check('安全模式状态: 只读探测 DSH_HOME / 官方客户端（不再显�
   return 'read-only host detection present'
 })
 
+check('客户端: 安全模式有只读提示条，应用/还原/卸载点击被拦截', () => {
+  const code = read('client.js')
+  assert(code.includes('"safe.banner"') && code.includes('"err.safeBlocked"'), '缺少安全模式文案')
+  assert(code.includes('safeMode ? h("div"'), '缺少安全模式提示条渲染')
+  assert(/if \(state && state\.safeMode\)/.test(code), 'doAction/doUninstall 缺少安全模式拦截')
+  assert(code.includes('safeMode ? t("metric.safe.count")'), '待解开指标未切换为安全模式')
+  assert(code.includes('disabled: busy || safeMode'), 'Hooks/注入开关未在安全模式禁用')
+  return 'banner + click guards + disabled switches'
+})
+
 // ── 动态：mock Cordis ctx，真实调用 apply() ──────────────────────────────────
 const tmpHome = fs.mkdtempSync(path.join(os.tmpdir(), 'dsh-purge-verify-'))
 const prevHome = process.env.DSH_HOME
@@ -289,6 +299,22 @@ const callDrill = async (op) => {
 const drillResponse = await callDrill('__nonexistent_write_op__')
 const drillRead = await callDrill('report')
 
+// 清洗页写操作：安全模式下必须明确返回 ok:false（旧实现回 ok:true，
+// 前端「应用」只显示「已完成」但什么都没发生）。
+const purgeRoute = reg.routes.find((r) => r.kind === 'prefix' && r.path === '/dsh-purge')
+const callPurge = async (method, url) => {
+  if (!purgeRoute) return null
+  const captured = {}
+  const res = { writeHead(code, headers) { captured.code = code; captured.headers = headers }, end(body) { captured.body = body } }
+  const req = { method, url, headers: {}, socket: { remoteAddress: '127.0.0.1' }, on() {} }
+  try {
+    await purgeRoute.handler(req, res)
+    return { code: captured.code, body: captured.body ? JSON.parse(captured.body) : null }
+  } catch (e) { return { error: String(e && e.message || e) } }
+}
+const applyPost = await callPurge('POST', '/dsh-purge/apply')
+const statusGet = await callPurge('GET', '/dsh-purge/status')
+
 const after2 = snap(tmpHome)
 
 const status = reg.commands.find(c => c.name === 'purge')
@@ -310,6 +336,8 @@ console.log(JSON.stringify({
   redteam,
   drillResponse,
   drillRead,
+  applyPost,
+  statusGet,
   injectError: reg.injectError || null,
 }))
 `
@@ -377,6 +405,20 @@ check('演练台 4 个入口在安全模式下全部空转且不抛错', () => {
   assert(errs.length === 0, `抛错: ${JSON.stringify(errs)}`)
   assert(probe.injectError === null, `inject 回调抛错: ${probe.injectError}`)
   return 'all inert'
+})
+
+check('安全模式: POST /dsh-purge/apply 明确返回只读拦截（不再假装成功）', () => {
+  const a = probe.applyPost
+  assert(a && !a.error, `apply handler 抛错: ${a && a.error}`)
+  assert(a.code === 200, `status=${a.code}（应为 200，避免前端显示网络错误）`)
+  assert(a.body && a.body.ok === false, `写操作不应 ok:true: ${JSON.stringify(a.body)}`)
+  assert(a.body.safeMode === true && a.body.readOnly === true && a.body.blocked === true,
+    `缺少只读/拦截标记: ${JSON.stringify(a.body)}`)
+  assert(/安全模式/.test(String(a.body.error || '')), `缺少可读拦截原因: ${JSON.stringify(a.body)}`)
+  const st = probe.statusGet
+  assert(st && st.code === 200 && st.body && st.body.ok === true && st.body.safeMode === true,
+    `GET status 应继续可用: ${JSON.stringify(st && st.body)}`)
+  return 'apply blocked with clear error; GET status still ok'
 })
 
 check('演练台: /redteam/api 安全模式返回只读拦截（写 op 拒绝、读 op 放行、不再 405）', () => {

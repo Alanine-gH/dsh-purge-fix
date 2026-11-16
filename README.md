@@ -764,4 +764,24 @@ dsh plugin --profile desktop add https://github.com/Alanine-gH/dsh-purge-fix/arc
 - **「还没定位到本机 Harness」修复**：安全模式只读探测 `dsh_home` / `desktop_exe` /
   `desktop_install` / `asar_still_sealed`，不解包 asar、不写文件；前端改为显示
   「已找到官方客户端，点应用解开」。
-- 回归自检 **23/23 PASS**；23 个技能可用性 **23 available / 0 broken**。
+- 回归自检 **25/25 PASS**；23 个技能可用性 **23 available / 0 broken**。
+
+### G. 追加修复：安全模式点「应用」无反应（2026-11-16）
+
+**现象**：安全模式面板显示「待解开 / 已找到官方客户端，点应用解开」，点「应用」后只显示「已完成」，
+但宿主文件与状态没有任何变化。
+
+**根因**：安全模式只注册了 `kind: "prefix"` 的 `/dsh-purge` 只读状态路由；旧实现对**所有方法**
+（包括 `POST /dsh-purge/apply`）都返回 `{ ok:true, safeMode:true, ... }`。前端只检查 `d.ok`，
+于是把「被拦截」当成「已完成」，实际没有任何写操作。
+
+**修复**：
+- `lib/index.js`：prefix handler 对非 GET/HEAD 请求统一返回 `{ ok:false, blocked:true,
+  safeMode:true, readOnly:true, op, error }`，错误文案写明「已拦截、插件没有改动任何文件」，
+  并给出关闭 `safeMode` 的路径与风险提示；安全状态补充 `shim_cmd/ps1/bin` 只读探测。
+- `client.js`：安全模式顶部显示提示条；第一张指标卡改为「安全模式」；应用/还原/卸载点击
+  直接提示「安全模式（只读）：… 已被拦截」；Hooks 与注入开关在安全模式下禁用。
+- `scripts/verify-safe-mode.mjs`：新增 2 项回归（POST /apply 必须 `ok:false`、客户端提示条/点击拦截）。
+
+**效果**：安全模式下点「应用」会立即得到红色拦截提示，不再假装成功；插件依旧不写宿主。
+完整能力仍需手动 `safeMode: false` + 重启（与 dsh 0.2.2+ 不兼容，风险自负）。

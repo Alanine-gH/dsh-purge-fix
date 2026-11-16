@@ -681,4 +681,26 @@ explicitly disabling safe mode and restarting.
 - **"Harness not located" fixed**: safe mode reports `dsh_home` / `desktop_exe` /
   `desktop_install` / `asar_still_sealed` read-only (no asar unpack, no writes), so the UI shows
   "official client found, click Apply to unpack" instead of "not located".
-- Regression: **23/23 PASS**; all 23 skills **available**.
+- Regression: **25/25 PASS**; all 23 skills **available**.
+
+### G. Fix: clicking "Apply" in safe mode did nothing (2026-11-16)
+
+**Symptom**: the safe-mode panel showed "Sealed / official client found, click Apply to unpack", but
+clicking Apply only displayed "Done" and nothing changed.
+
+**Root cause**: safe mode only registered a `kind: "prefix"` `/dsh-purge` read-only status route;
+the old handler returned `{ ok:true, safeMode:true, ... }` for every method, including
+`POST /dsh-purge/apply`. The client only checked `d.ok`, so it treated the blocked call as success.
+
+**Fix**:
+- `lib/index.js`: the prefix handler now returns `{ ok:false, blocked:true, safeMode:true,
+  readOnly:true, op, error }` for every non-GET/HEAD request, with a clear "blocked; no files were
+  changed" message and the safeMode path/risk note; safe status also probes `shim_cmd/ps1/bin`.
+- `client.js`: safe-mode banner, "Safe mode" metric card, immediate red blocked notice on
+  Apply/Revert/Uninstall, and disabled Hooks / injection switches.
+- `scripts/verify-safe-mode.mjs`: two new regression checks (POST /apply must return `ok:false`;
+  client banner and click guards present).
+
+**Result**: clicking Apply in safe mode now shows an explicit blocked message instead of pretending
+to succeed. The plugin still never writes the host. Full capability still requires manual
+`safeMode: false` + restart (not compatible with dsh 0.2.2+, at your own risk).

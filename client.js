@@ -436,6 +436,10 @@ window.__ModuleLoader__.load({ id: "dsh-purge-fix", factory: (require) => {
 			"metric.sealed.count": "待解开",
 			"metric.lost": "补丁已丢失，请重新应用",
 			"metric.lost.count": "已丢失",
+			"metric.safe": "安全模式（只读），不会解开或修改宿主",
+			"metric.safe.count": "安全模式",
+			"safe.banner": "安全模式（只读）：应用 / 还原 / 卸载 / 开关修改均被拦截，插件不会改动宿主。需要完整能力：在 profile 的 cordis.patch.yml 把 dsh-purge 的 config.safeMode 设为 false 后重启宿主（与 dsh 0.2.2+ 不兼容，风险自负）。",
+			"err.safeBlocked": "安全模式（只读）：{action} 已被拦截，插件没有改动宿主。",
 			"rewind.label": "回退",
 			"rewind.aria": "回退",
 			"rewind.busy": "回退中…",
@@ -780,6 +784,10 @@ window.__ModuleLoader__.load({ id: "dsh-purge-fix", factory: (require) => {
 			"metric.sealed.count": "Sealed",
 			"metric.lost": "Patches lost — Apply again",
 			"metric.lost.count": "Lost",
+			"metric.safe": "Safe mode (read-only): host stays untouched",
+			"metric.safe.count": "Safe mode",
+			"safe.banner": "Safe mode (read-only): Apply / Revert / Uninstall / switch changes are blocked and the plugin will not touch the host. For full capability, set config.safeMode to false for dsh-purge in the profile cordis.patch.yml and restart (not compatible with dsh 0.2.2+, use at your own risk).",
+			"err.safeBlocked": "Safe mode (read-only): {action} was blocked; the plugin did not modify the host.",
 			"status.unlocated": "Not located",
 			"metric.unlocated": "This install was not found yet",
 			"rewind.label": "Undo",
@@ -831,6 +839,7 @@ window.__ModuleLoader__.load({ id: "dsh-purge-fix", factory: (require) => {
 .dshp-kicker{font-family:var(--dshp-mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dshp-mute);margin:0 0 4px}
 .dshp-title{font-family:var(--dshp-display);font-size:20px;font-weight:500;letter-spacing:.02em;line-height:1.3;margin:0;color:var(--dshp-ink)}
 .dshp-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px;flex-wrap:wrap}
+.dshp-safe{margin:-2px 0 14px;padding:8px 10px;border:1px solid color-mix(in srgb,var(--dshp-warn) 32%,var(--dshp-line));border-radius:8px;background:color-mix(in srgb,var(--dshp-warn) 9%,var(--dshp-bg));color:var(--dshp-warn);font-size:12px;line-height:1.55}
 .dshp-sub{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:20px 0 10px}
 .dshp-sub h4{margin:0;font-family:var(--dshp-display);font-size:15px;font-weight:500}
 .dshp-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-bottom:14px}
@@ -1192,7 +1201,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 			});
 		}
 
-		function HooksDenySection({ onSaved }) {
+		function HooksDenySection({ onSaved, safeMode }) {
 			const t = useT();
 			const [cfg, setCfg] = useState(null);
 			const [notice, setNotice] = useState({ kind: "idle", text: "" });
@@ -1206,6 +1215,10 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 
 			const save = (hooksDenyBypass) => {
 				if (!cfg || busy) return;
+				if (safeMode) {
+					setNotice({ kind: "error", text: t("err.safeBlocked", { action: t("hooksDeny.title") }) });
+					return;
+				}
 				setCfg({ hooksDenyBypass });
 				setBusy(true);
 				apiJson("/dsh-purge/hooks-deny", {
@@ -1238,7 +1251,8 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 						h("input", {
 							type: "checkbox",
 							checked: cfg.hooksDenyBypass === true,
-							disabled: busy,
+							disabled: busy || safeMode,
+							title: safeMode ? t("safe.banner") : undefined,
 							onChange: (e) => save(e.target.checked),
 						}),
 						t("hooksDeny.bypass"),
@@ -1248,7 +1262,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 		}
 
 		// v1.8.0：提示词注入开关。默认关闭，改动立即生效（服务端会刷新内存钉子）。
-		function InjectSwitchSection() {
+		function InjectSwitchSection({ safeMode }) {
 			const t = useT();
 			const [on, setOn] = useState(false);
 			const [loaded, setLoaded] = useState(false);
@@ -1264,6 +1278,10 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 
 			const save = (next) => {
 				if (busy) return;
+				if (safeMode) {
+					setNotice({ kind: "error", text: t("err.safeBlocked", { action: t("injectSwitch.title") }) });
+					return;
+				}
 				const prev = on;
 				setOn(next);
 				setBusy(true);
@@ -1297,7 +1315,8 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 						h("input", {
 							type: "checkbox",
 							checked: on === true,
-							disabled: busy,
+							disabled: busy || safeMode,
+							title: safeMode ? t("safe.banner") : undefined,
 							onChange: (e) => save(e.target.checked),
 						}),
 						t("injectSwitch.enable"),
@@ -1679,6 +1698,11 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 				const label = tr(actionKey);
 				const ticket = ++actionTicket.current;
 				const run = () => {
+					if (state && state.safeMode) {
+						setAskRestart(false);
+						setNotice({ kind: "error", text: tr("err.safeBlocked", { action: label }) });
+						return;
+					}
 					setPatchBusy(true);
 					setAskRestart(false);
 					setNotice({ kind: "idle", text: "" });
@@ -1868,10 +1892,15 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 			}, []);
 
 			const doUninstall = useCallback(() => {
+				const tr = tRef.current;
+				if (state && state.safeMode) {
+					setAskUninstall(false);
+					setNotice({ kind: "error", text: tr("err.safeBlocked", { action: tr("btn.uninstall") }) });
+					return;
+				}
 				setUninstallBusy(true);
 				setAskUninstall(false);
 				setAskRestart(false);
-				const tr = tRef.current;
 				setNotice({ kind: "ok", text: tr("uninstall.applying") });
 				apiJson("/dsh-purge/uninstall", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" })
 					.then((d) => {
@@ -1894,6 +1923,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 			}, [state, waitHostAfterUninstall]);
 
 			const s = state;
+			const safeMode = !!(s && s.safeMode);
 			const located = !!(s && s.ai_base);
 			const hostSurface = hostSurfaceOf(s);
 			const desktopLikely = hostSurface === "desktop" || clientGuessSurface() === "desktop";
@@ -1976,6 +2006,7 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 					h("h3", { className: "dshp-title" }, t("purge.title")),
 					h("span", { className: "dshp-pill" }, t("surface." + hostSurface)),
 				),
+				safeMode ? h("div", { className: "dshp-safe", role: "status" }, t("safe.banner")) : null,
 				h("div", { className: "dshp-rel" },
 					h("div", { className: "dshp-now" },
 						h("span", { className: "dshp-now-label" }, t("channel.local")),
@@ -1990,8 +2021,8 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 				),
 				s ? h("div", { className: "dshp-metrics" },
 					h("div", { className: "dshp-metric" },
-						h("b", null, located ? (applied + " / " + total) : (patchesLost ? t("metric.lost.count") : (sealedReady ? t("metric.sealed.count") : t("metric.unlocated.count")))),
-						h("span", null, !located ? (patchesLost ? t("metric.lost") : (sealedReady ? t("metric.sealed") : t("metric.unlocated"))) : (metricNotes.length ? metricNotes.join(" · ") : t("metric.purged"))),
+						h("b", null, safeMode ? t("metric.safe.count") : located ? (applied + " / " + total) : (patchesLost ? t("metric.lost.count") : (sealedReady ? t("metric.sealed.count") : t("metric.unlocated.count")))),
+						h("span", null, safeMode ? t("metric.safe") : !located ? (patchesLost ? t("metric.lost") : (sealedReady ? t("metric.sealed") : t("metric.unlocated"))) : (metricNotes.length ? metricNotes.join(" · ") : t("metric.purged"))),
 					),
 					h("div", { className: "dshp-metric" },
 						h("b", { style: { fontSize: 13, fontFamily: "var(--dshp-mono)", fontWeight: 500 } },
@@ -2014,8 +2045,8 @@ body:not([data-ds-dark-theme]) .dshp-auth-ops button.primary{background:var(--ds
 				),
 				h("div", { className: "dshp-bar", "aria-hidden": "true" }, h("i", { style: { width: pct + "%" } })),
 				h(PatchGroups, { state: s }),
-				h(HooksDenySection, { onSaved: loadAll }),
-				h(InjectSwitchSection, null),
+				h(HooksDenySection, { onSaved: loadAll, safeMode }),
+				h(InjectSwitchSection, { safeMode }),
 				h("div", { className: "dshp-row", style: { marginTop: 14 } },
 					h(Btn, { kind: "primary", disabled: patchBusy || uninstallBusy || !overrideLoaded, onClick: () => doAction("apply", "action.apply") }, patchBusy ? t("btn.apply.busy") : t("btn.apply")),
 					h(Btn, { kind: "danger", disabled: patchBusy || uninstallBusy, onClick: () => doAction("revert", "action.revert") }, t("btn.revert")),
