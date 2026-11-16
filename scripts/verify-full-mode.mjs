@@ -28,6 +28,13 @@ check('patch: safeMode:false（默认完整模式）', () => {
   return 'full default'
 })
 
+check('重启判定: ensureHostClean 只要求当前宿主有清洗标记', () => {
+  const code = read('lib/core.js')
+  assert(/if \(!hostCleanMarkersPresent\(aiBase\)\)/.test(code),
+    'ensureHostClean 仍用 allPatchHostsWritten 判定全部 host')
+  return 'current host only'
+})
+
 check('package.json: dshTarget 指向 0.2.2-rc.3', () => {
   const pkg = JSON.parse(read('package.json'))
   assert(String(pkg.dshTarget).includes('0.2.2'), `dshTarget=${pkg.dshTarget}`)
